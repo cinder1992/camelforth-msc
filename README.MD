@@ -1,7 +1,8 @@
 # CamelForth for the Membership Card
 
 This is a port of [CamelForth](http://www.camelforth.com) for use with Lee Hart's 1802 Membership card, found here: https://www.sunrise-ev.com/1802.htm
-![minicom-example4.png](doc/pic/minicom-example4.png)
+
+![minicom-example4.png](doc/pics/minicom-example4.png)
 
 ## Changes from Vanilla CamelForth
 ### Additions:
