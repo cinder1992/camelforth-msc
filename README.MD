@@ -1,6 +1,7 @@
 # CamelForth for the Membership Card
 
 This is a port of [CamelForth](http://www.camelforth.com) for use with Lee Hart's 1802 Membership card, found here: https://www.sunrise-ev.com/1802.htm
+![minicom-example4.png](doc/pic/minicom-example4.png)
 
 ## Changes from Vanilla CamelForth
 ### Additions:
@@ -50,6 +51,13 @@ On Windows that do **not** support 16-bit DOS executables, DOSBOX is required. a
 ### Macintosh:
 
 Building on Mac requires DOSBOX. Open DOSBOX and mount the repository as `A:`, navigate to `A:` in DOSBOX and run `build`
+
+## Running CamelForth on your Membership Card
+
+To load CamelForth, you will require your Membership Card to have a monitor (or higher-level loader) that supports Intel HEX records.
+Build the code, then using minicom, teraterm, or your terminal of choice, send `CF1802.OBJ` to the Membership card.
+
+See [here](doc/minicom-example.md) for an example uploading using minicom on linux
 
 ## Known Issues
 
