@@ -2,7 +2,7 @@
 
 1. Open minicom using `minicom -b 4800 -c on -d <your-serial-device>`, have the Membership card running the monitor.
 
-![minicom-example1.png](pic/minicom-example1.png)
+![minicom-example1.png](pics/minicom-example1.png)
 
 2. Hit `CTRL+A` followed by `Shift+O` to open the configurator, then select and open `File transfer protocols`
 3. if not present, create a new xfer protocol with the following options:
@@ -11,7 +11,7 @@
 	Everything else the same as `ascii`
 	The window should now look like this:
 
-![minicom-example2.png](pic/minicom-example2.png)
+![minicom-example2.png](pics/minicom-example2.png)
 
 4. hit the `ESC` key twice to return to the terminal
 5. Type `L` to prime the Monitor to accept the Intel HEX file
@@ -20,9 +20,9 @@
 8. Tag the file `CF1802.OBJ` with `Space` and hit `Return` to begin sending the file.
 9. The lights on the Membership Card will begin flashing with the contents of the file, once it is complete the window will look like this
 
-![minicom-example3.png](pic/minicom-example3.png)
+![minicom-example3.png](pics/minicom-example3.png)
 
 10. Type `R` and hit `Return`, The monitor will hand over control to the Forth interpreter
 11. Hit `Return` again and CamelForth will sign on. Code away!
 
-![minicom-example4.png](pic/minicom-example4.png)
+![minicom-example4.png](pics/minicom-example4.png)
