@@ -56,7 +56,7 @@ Building on Mac requires DOSBOX. Open DOSBOX and mount the repository as `A:`, n
 - `ascii-xfr` transfers from `minicom` do not play well with the reference `ACCEPT` routine, you'll have to key in your programs by hand. sorry.
 - There is **ABSOLUTELY NO BOUNDS CHECKING** on the stacks, it's up to you to not clobber memory!
 - The program has only been tested on a REV. L CPU board with a REV. L Front panel. `SEQ` and `REQ` logic as well as `B3` and `BN3` logic in the `KEY` and `EMIT` routines may be reversed for other revisions!
-- There is no way to reenter the Forth interpreter after exiting with `BYE`, leaving programs clobbered by the monitor
+- There is no way to reenter the Forth interpreter after exiting with `BYE`, leaving programs potentially clobbered by the monitor
 - The interpreter takes up around 100-200 bytes more than it should, thanks to page-alignment issues.
 - `ACCEPT`, `WORD`, and `FIND` are implemented in high-level Forth, making the interpreter slower than it really should be when compiling words, sometimes taking up to several seconds to compile for larger words.
 
@@ -66,4 +66,5 @@ Building on Mac requires DOSBOX. Open DOSBOX and mount the repository as `A:`, n
  - [ ] Implement a SAVE and LOAD routine
  - [ ] Implement a way to build for use in ROM
  - [ ] Save the structures/registers needed by MCSMP20 so that invocation doesn't clobber the Forth stack
+ - [ ] Update `GENBAUD`, `EMIT`, and `KEY` to use a USER variable rather than requiring a whole register
 
