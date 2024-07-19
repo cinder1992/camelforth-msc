@@ -1750,13 +1750,13 @@ COLD:
 	sep colonpc
 	.dw GENBAUD,UINIT,U0,NINIT,CMOVE
 	.dw XSQUOTE
-	.db 65			; length of sign-on string
-	.db "RCA1802 CamelForth v1.03 - Membership Card Edition  15 Jul 2024"
+	.db 67			; length of sign-on string
+	.db "RCA1802 CamelForth v1.03.1 - Membership Card Edition  19 Jul 2024"
 	.db H'0D,H'0A
 	.dw TYPE
 	.dw DFREE,UDOT,XSQUOTE
-	.db 12
-	.db "Bytes free"
+	.db 24
+	.db " Dictionary Bytes free"
 	.db H'0D,H'0A
 	.dw TYPE,ABORT		; ABORT never returns
 
