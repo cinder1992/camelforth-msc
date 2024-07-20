@@ -10,12 +10,12 @@
 \ Beware, trying to kill dead bits will make them
 \ rise from the grave!
 
-: ROR ( c -- c ) \ Rotate C right by one bit
+: ror ( c -- c ) \ Rotate C right by one bit
 	DUP 1 AND 0<> IF 256 OR THEN 2/ ;
 
 : kill-bit ( d -- )
  	1 BEGIN \ d c -- 
 	OVER 0 DO LOOP \ do nothing for a few cycles
-	4 INP XOR ROR DUP 4 OUTP
-	DUP 0= EF4? OR UNTIL DROP DROP ;
+	4 inp XOR ror DUP 4 outp
+	DUP 0= ef4? OR UNTIL DROP DROP ;
 

@@ -3,7 +3,8 @@
 ; ===============================================
 ; CamelForth for the RCA 1802
 ; Copyright (c) 1994,1995 Bradford J. Rodriguez
-; ; Copyright (c) 2009 Harold Rabbie
+; Copyright (c) 2009 Harold Rabbie
+; Copyright (c) 2024 Neil Ray - Membership Card port
 ;
 ; This program is free software; you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -43,16 +44,16 @@ BL:
 	sep constpc
 	.dw H'20
 
-;Z tibsize  -- n	 size of TIB
+;X #TIB  -- n	 size of TIB
 	.dw link
 	.db 0
 	.set link,*
-	.db 7,"TIBSIZE"
+	.db 4,"#TIB"
 TIBSIZE:
 	sep constpc
-	.dw 124	  ; 2 chars safety zone
+	.dw tibend-tibarea
 
-;X tib     -- a-addr	Terminal Input Buffer
+;X TIB     -- a-addr	Terminal Input Buffer
 	.dw link
 	.db 0
 	.set link,*
@@ -101,7 +102,7 @@ STATE:
 	sep userpc
 	.dw 6
 
-;Z dp      -- a-addr	holds dictionary ptr
+;Z DP      -- a-addr	holds dictionary ptr
 ;  8 USER DP
 	.dw link
 	.db 0
@@ -111,7 +112,7 @@ DP:
 	sep userpc
 	.dw 8
 
-;Z 'source  -- a-addr	two cells: len, adrs
+;Z 'SOURCE  -- a-addr	two cells: len, adrs
 ; 10 USER 'SOURCE
 	.dw link
 	.db 0
@@ -131,7 +132,7 @@ LATEST:
 	sep userpc
 	.dw 14
 
-;Z hp       -- a-addr	HOLD pointer
+;Z HP       -- a-addr	HOLD pointer
 ;   16 USER HP
 	.dw link
 	.db 0
@@ -151,7 +152,17 @@ LP:
 	sep userpc
 	.dw 18
 
-;Z s0       -- a-addr	end of parameter stack
+;Z MAGIC       -- a-addr magic num used by TRUECOLD to determine start
+;   20 USER MAGIC
+	.dw link
+	.db 0
+	.set link,*
+	.db 5,"magic"
+MAGIC:
+	sep userpc
+	.dw 20
+
+;Z S0       -- a-addr	end of parameter stack
 	.dw link
 	.db 0
 	.set link,*
@@ -170,7 +181,7 @@ PAD:
 	sep constpc
 	.dw padarea
 
-;Z l0       -- a-addr	bottom of Leave stack
+;Z L0       -- a-addr	bottom of Leave stack
 	.dw link
 	.db 0
 	.set link,*
@@ -179,7 +190,7 @@ L0:
 	sep constpc
 	.dw leavestack
 
-;Z r0       -- a-addr	end of return stack
+;Z R0       -- a-addr	end of return stack
 	.dw link
 	.db 0
 	.set link,*
@@ -188,7 +199,7 @@ R0:
 	sep constpc
 	.dw returnstack
 
-;Z uinit    -- addr	initial values for user area
+;Z UINIT    -- addr	initial values for user area
 	.dw link
 	.db 0
 	.set link,*
@@ -200,15 +211,17 @@ UINIT:
 	.dw 0,0		; SOURCE init'd elsewhere
 	.dw lastword	; LATEST
 	.dw 0		; HP init'd elsewhere
+	.dw 0		; LP init'd elsewhere
+	.dw 28912	; Magic word
 
-;Z #init    -- n	#bytes of user area init data
+;Z #INIT    -- n	#bytes of user area init data
 	.dw link
 	.db 0
 	.set link,*
 	.db 5,"#INIT"
 NINIT:
 	sep constpc
-	.dw 18
+	.dw 22
 
 ; ARITHMETIC OPERATORS ==========================
 
@@ -253,7 +266,7 @@ ABS:
 	lbdf NEGATE
 	sep nextpc
 
-;X DNEGATE   d1 -- d2	negate double precision
+;D DNEGATE   d1 -- d2	negate double precision
 ;   SWAP INVERT SWAP INVERT 1 M+ ;
 	.dw link
 	.db 0
@@ -275,7 +288,7 @@ QDNEGATE:
 	.dw ZEROLESS,qbranch,DNEG1,DNEGATE
 DNEG1:  .dw EXIT
 
-;X DABS     d1 -- +d2	absolute value dbl.prec.
+;D DABS     d1 -- +d2	absolute value dbl.prec.
 ;   DUP ?DNEGATE ;
 	.dw link
 	.db 0
@@ -556,7 +569,7 @@ SPCS1:  .dw DUP,qbranch,SPCS2
 	.dw SPACE,ONEMINUS,branch,SPCS1
 SPCS2:  .dw DROP,EXIT
 
-;Z umin     u1 u2 -- u		unsigned minimum
+;Z UMIN     u1 u2 -- u		unsigned minimum
 ;   2DUP U> IF SWAP THEN DROP ;
 	.dw link
 	.db 0
@@ -567,7 +580,7 @@ UMIN:
 	.dw TWODUP,UGREATER,QBRANCH,UMIN1,SWAP
 UMIN1:  .dw DROP,EXIT
 
-;Z umax    u1 u2 -- u		unsigned maximum
+;Z UMAX    u1 u2 -- u		unsigned maximum
 ;   2DUP U< IF SWAP THEN DROP ;
 	.dw link
 	.db 0
@@ -606,7 +619,6 @@ ACC4:
 	.dw BRANCH,ACC1
 ACC5:
 	.dw DROP,NIP,SWAP,MINUS,CR,EXIT
-	
 
 ;C TYPE    c-addr +n --		type line to term'l
 ;   ?DUP IF
@@ -637,20 +649,19 @@ XSQUOTE:
 	.dw EXIT
 
 ;C S"       --			compile in-line string
-;   COMPILE (S")  [ HEX ]
-;   22 WORD C@ 1+ ALIGNED ALLOT ; IMMEDIATE
+; [CHAR] " PARSE POSTPONE SLITERAL
+; IMMEDIATE 
 	.dw link
 	.db 1
 	.set link,*
 	.db 2,"S\""
 SQUOTE:
 	sep colonpc
-	.dw LIT,XSQUOTE,COMMAXT
-	.dw LIT,H'22,WORD,CFETCH,ONEPLUS
-	.dw ALIGNED,ALLOT,EXIT
+	.dw LIT,H'22,PARSE
+	.dw SLITERAL,EXIT
 
 ;C ."       --			compile string to print
-;   POSTPONE S"  POSTPONE TYPE ; IMMEDIATE
+;   S"  POSTPONE TYPE ; IMMEDIATE
 	.dw link
 	.db 1
 	.set link,*
@@ -658,7 +669,7 @@ SQUOTE:
 DOTQUOTE:
 	sep colonpc
 	.dw SQUOTE
-	.dw LIT,TYPE,COMMAXT
+	.dw COMPILE,TYPE
 	.dw EXIT
 			
 ; NUMERIC OUTPUT ================================
@@ -711,7 +722,7 @@ LESSNUM:
 	sep colonpc
 	.dw PAD,HP,STORE,EXIT
 
-;Z >digit   n -- c		convert to 0..9A..Z
+;Z >DIGIT   n -- c		convert to 0..9A..Z
 ;   [ HEX ] DUP 9 > 7 AND + 30 + ;
 	.dw link
 	.db 0
@@ -723,7 +734,7 @@ TODIGIT:
 	.dw LIT,H'30,PLUS,EXIT
 
 ;C #     ud1 -- ud2		convert 1 digit of output
-;   BASE @ UD/MOD ROT >digit HOLD ;
+;   BASE @ UD/MOD ROT >DIGIT HOLD ;
 	.dw link
 	.db 0
 	.set link,*
@@ -833,14 +844,14 @@ ALLOT:
 ; Code and Data spaces.
 
 ;C ,    x --			append cell to dict
-;   HERE ! 1 CELLS ALLOT ;
+;   HERE ! CELL ALLOT ;
 	.dw link
 	.db 0
 	.set link,*
 	.db 1,","
 COMMA:
 	sep colonpc
-	.dw HERE,STORE,ONE,CELLS,ALLOT,EXIT
+	.dw HERE,STORE,CELL,ALLOT,EXIT
 
 ;C C,   char --			append char to dict
 ;   HERE C! 1 CHARS ALLOT ;
@@ -868,7 +879,7 @@ SOURCE:
 	sep colonpc
 	.dw TICKSOURCE,TWOFETCH,EXIT
 
-;X /STRING  a u n -- a+n u-n	trim string
+;S /STRING  a u n -- a+n u-n	trim string
 ;   ROT OVER + ROT ROT - ;
 	.dw link
 	.db 0
@@ -878,7 +889,7 @@ SLASHSTRING:
 	sep colonpc
 	.dw ROT,OVER,PLUS,ROT,ROT,MINUS,EXIT
 
-;Z >counted  src n dst --	copy to counted str
+;Z >COUNTED  src n dst --	copy to counted str
 ;   2DUP C! CHAR+ SWAP CMOVE ;
 	.dw link
 	.db 0
@@ -888,7 +899,7 @@ TOCOUNTED:
 	sep colonpc
 	.dw TWODUP,CSTORE,CHARPLUS,SWAP,CMOVE,EXIT
 
-;C WORD   char -- c-addr n	word delim'd by char
+;C WORD   char -- c-addr 	word delim'd by char
 ;   DUP  SOURCE >IN @ /STRING	-- c c adr n
 ;   DUP >R   ROT SKIP		-- c adr' n'
 ;   OVER >R  ROT SCAN		-- adr" n"
@@ -897,7 +908,7 @@ TOCOUNTED:
 ;   TUCK -			-- adr' N
 ;   HERE >counted		--
 ;   HERE			-- a
-;   BL OVER COUNT + C! ;	append trailing blank
+;   BL OVER COUNT + C!		add trailing blank
 	.dw link
 	.db 0
 	.set link,*
@@ -911,10 +922,11 @@ WORD:
 WORD1:  .dw RFROM,RFROM,ROT,MINUS,TOIN,PLUSSTORE
 	.dw TUCK,MINUS
 	.dw HERE,TOCOUNTED,HERE
-	.dw BL,OVER,COUNT,PLUS,CSTORE,EXIT
+        .dw BL,OVER,COUNT,PLUS,CSTORE
+	.dw EXIT
 
 ;Z NFA>LFA   nfa -- lfa		name adr -> link field
-;   3 - ;
+;   3 - ;    Used in the inner loop of FIND
 	.dw link
 	.db 0
 	.set link,*
@@ -950,8 +962,8 @@ IMMEDQ:
 	.dw ONEMINUS,CFETCH,EXIT
 
 ;C FIND   c-addr -- c-addr 0	if not found
-;C		  xt  1		if immediate
-;C		  xt -1		if "normal"
+; 		  xt  1		if immediate
+; 		  xt -1		if "normal"
 ;   LATEST @ BEGIN		-- a nfa
 ;       2DUP OVER C@ CHAR+	-- a nfa a nfa n+1
 ;       S=			-- a nfa f
@@ -982,7 +994,7 @@ FIND2:  .dw ZEROEQUAL,qbranch,FIND1
 FIND3:  .dw EXIT
 
 ;C LITERAL  x --		append numeric literal
-;   STATE @ IF ['] LIT ,XT , THEN ; IMMEDIATE
+;   STATE @ IF COMPILE LIT , THEN ; IMMEDIATE
 ; This tests STATE so that it can also be used
 ; interpretively.  (ANSI doesn't require this.)
 	.dw link
@@ -992,11 +1004,11 @@ FIND3:  .dw EXIT
 LITERAL:
 	sep colonpc
 	.dw STATE,FETCH,qbranch,LITER1
-	.dw LIT,LIT,COMMAXT,COMMA
+	.dw COMPILE,LIT,COMMA
 LITER1: .dw EXIT
 
 ;Z DIGIT?   c -- n -1		if c is a valid digit
-;Z	    -- x  0   otherwise
+; 	    -- x  0   otherwise
 ;   [ HEX ] DUP 39 > 100 AND +	silly looking
 ;   DUP 140 > 107 AND -   30 -	but it works!
 ;   DUP BASE @ U< ;
@@ -1012,7 +1024,7 @@ DIGITQ:
 	.dw DUP,BASE,FETCH,ULESS,EXIT
 
 ;Z ?SIGN   adr n -- adr' n' f	get optional sign
-;Z  advance adr/n if sign;	return NZ if negative
+;   advance adr/n if sign;	return NZ if negative
 ;   OVER C@			-- adr n c
 ;   2C - DUP ABS 1 = AND	-- +=-1, -=+1, else 0
 ;   DUP IF 1+			-- +=0, -=+2
@@ -1030,7 +1042,7 @@ QSIGN:
 QSIGN1: .dw EXIT
 
 ;C >NUMBER  ud adr u -- ud' adr' u'
-;C				convert string to number
+;				convert string to number
 ;   BEGIN
 ;   DUP WHILE
 ;       OVER C@ DIGIT?
@@ -1054,7 +1066,7 @@ TONUM2: .dw TOR,TWOSWAP,BASE,FETCH,UDSTAR
 TONUM3: .dw EXIT
 
 ;Z ?NUMBER  c-addr -- n -1	string->number
-;Z		 -- c-addr 0	if convert error
+; 		 -- c-addr 0	if convert error
 ;   DUP  0 0 ROT COUNT		-- ca ud adr n
 ;   ?SIGN >R  >NUMBER		-- ca ud adr' n'
 ;   IF   R> 2DROP 2DROP 0	-- ca 0   (error)
@@ -1076,7 +1088,7 @@ QNUM2:  .dw MINUSONE
 QNUM3:  .dw EXIT
 
 ;Z INTERPRET    i*x c-addr u -- j*x
-;Z				interpret given buffer
+; 				interpret given buffer
 ; This is a common factor of EVALUATE and QUIT.
 ; ref. dpANS-6, 3.4 The Forth Text Interpreter
 ;   'SOURCE 2!  0 >IN !
@@ -1106,12 +1118,11 @@ INTER1: .dw BL,WORD,DUP,CFETCH,qbranch,INTER9
 	.dw qbranch,INTER2
 	.dw EXECUTE,branch,INTER3
 INTER2: .dw COMMAXT
-INTER3: .dw branch,INTER8
+INTER3: .dw branch,INTER1
 INTER4: .dw QNUMBER,qbranch,INTER5
-	.dw LITERAL,branch,INTER6
+	.dw LITERAL,branch,INTER1
 INTER5: .dw COUNT,TYPE,LIT,H'3F,EMIT,CR,ABORT
-INTER6:
-INTER8: .dw branch,INTER1
+
 INTER9: .dw DROP,EXIT
 
 ;C EVALUATE  i*x c-addr u -- j*x	interpret string
@@ -1132,9 +1143,9 @@ EVALUATE:
 ;C QUIT     --    R: i*x --		interpret from kbd
 ;   L0 LP !  R0 RP!   0 STATE !
 ;   BEGIN
-;       TIB DUP TIBSIZE ACCEPT  SPACE
+;       TIB DUP TIBSIZE ACCEPT
 ;       INTERPRET
-;       STATE @ 0= IF ." OK" THEN
+;       STATE @ 0= IF CR ." OK" THEN
 ;   AGAIN ;
 	.dw link
 	.db 0
@@ -1144,10 +1155,10 @@ QUIT:
 	sep colonpc
 	.dw L0,LP,STORE
 	.dw R0,RPSTORE,ZERO,STATE,STORE
-QUIT1:  .dw TIB,DUP,TIBSIZE,ACCEPT,SPACE
+QUIT1:  .dw TIB,DUP,TIBSIZE,ACCEPT
 	.dw INTERPRET
 	.dw STATE,FETCH,ZEROEQUAL,qbranch,QUIT2
-	.dw XSQUOTE
+	.dw CR,XSQUOTE
 	.db 3,"ok "
 	.dw TYPE
 QUIT2:  .dw branch,QUIT1
@@ -1174,7 +1185,7 @@ QABORT:
 QABO1:  .dw TWODROP,EXIT
 
 ;C ABORT"  i*x 0  -- i*x   R: j*x -- j*x  x1=0
-;C	 i*x x1 --       R: j*x --      x1<>0
+; 	 i*x x1 --       R: j*x --      x1<>0
 ;   POSTPONE S" POSTPONE ?ABORT ; IMMEDIATE
 	.dw link
 	.db 1
@@ -1183,20 +1194,17 @@ QABO1:  .dw TWODROP,EXIT
 ABORTQUOTE:
 	sep colonpc
 	.dw SQUOTE
-	.dw LIT,QABORT,COMMAXT
+	.dw COMPILE,QABORT
 	.dw EXIT
 
 ;C '    -- xt		find word in dictionary
-;   BL WORD FIND
-;   0= ABORT" ?" ;
+;   FINDWORD DROP
 	.dw link
 	.db 0
 	.set link,* 
 	.db 1,"\'"
 TICK:   sep colonpc
-	.dw BL,WORD,FIND,ZEROEQUAL,XSQUOTE
-	.db 1,"?"
-	.dw QABORT,EXIT
+	.dw FINDWORD,DROP,EXIT
 
 ;C CHAR   -- char	parse ASCII character
 ;   BL WORD 1+ C@ ;
@@ -1209,7 +1217,7 @@ CHAR:
 	.dw BL,WORD,ONEPLUS,CFETCH,EXIT
 
 ;C [CHAR]   --		compile character literal
-;   CHAR  ['] LIT ,XT  , ; IMMEDIATE
+;   CHAR COMPILE LIT  , ; IMMEDIATE
 	.dw link
 	.db 1
 	.set link,*
@@ -1217,18 +1225,18 @@ CHAR:
 BRACCHAR:
 	sep colonpc
 	.dw CHAR
-	.dw LIT,LIT,COMMAXT
+	.dw COMPILE,LIT
 	.dw COMMA,EXIT
 
 ;C (    --		skip input until )
-;   [ HEX ] 29 WORD DROP ; IMMEDIATE
+;   [ HEX ] 29 PARSE 2DROP ; IMMEDIATE
 	.dw link
 	.db 1
 	.set link,*
 	.db 1,"("
 PAREN:
 	sep colonpc
-	.dw LIT,H'29,WORD,DROP,EXIT
+	.dw LIT,H'29,PARSE,TWODROP,EXIT
 
 ; COMPILER ======================================
 
@@ -1248,27 +1256,16 @@ XCREATE:
 	.dw EXIT
 
 ;C CREATE   --		create an empty definition with 3-byte code field
-;   (CREATE) createpc ,CF noop ,XT	code field
+;   (CREATE) CFCOMPILE docreate COMPILE noop	code field
 	.dw link
 	.db 0
 	.set link,*
 	.db 6,"CREATE"
 CREATE:
 	sep colonpc
-	.dw XCREATE
-	.dw LIT,createpc,COMMACF
-	.dw LIT,noop,COMMAXT,EXIT	; default DOES> part
-
-;Z SCREATE   --		create an empty definition with 1-byte code field
-;   (CREATE) varpc ,CF
-	.dw link
-	.db 0
-	.set link,*
-	.db 7,"SCREATE"
-SCREATE:
-	sep colonpc
-	.dw XCREATE
-	.dw LIT,varpc,COMMACF,EXIT
+	.dw XCREATE,CFCOMPILE
+	sep createpc
+	.dw COMPILE,noop,EXIT	; default DOES> part
 
 ;Z (DOES>)  --	run-time action of DOES>
 ;   R>	      adrs of headless DOES> def'n
@@ -1286,15 +1283,16 @@ XDOES:
 ; ANSI 6.1.1250 says that DOES> only applies to CREATE'd 
 ; definitions, which have a 3-byte CFA
 ;   COMPILE (DOES>)
-;   docolon ,CF ; IMMEDIATE
+;   CFCOMPILE docolon ; IMMEDIATE
 	.dw link
 	.db 1
 	.set link,*
 	.db 5,"DOES>"
 DOES:
 	sep colonpc
-	.dw LIT,XDOES,COMMAXT
-	.dw LIT,colonpc,COMMACF,EXIT
+	.dw COMPILE,XDOES,CFCOMPILE
+	sep colonpc
+	.dw EXIT
 
 ;C RECURSE  --		recurse current definition
 ;   LATEST @ NFA>CFA ,XT ; IMMEDIATE
@@ -1360,14 +1358,15 @@ IMMEDIATE:
 	.dw EXIT
 
 ;C :	--		begin a colon definition
-;   CREATE HIDE ] colonpc ,CF ;
+;   CREATE HIDE ] CFCOMPILE docolon ;
 	.dw link
 	.db 0
 	.set link,*
 	.db 1,":"
 COLON:
 	sep colonpc
-	.dw XCREATE,HIDE,RIGHTBRACKET,LIT,colonpc,COMMACF
+	.dw XCREATE,HIDE,RIGHTBRACKET,CFCOMPILE
+	sep colonpc
 	.dw EXIT
 
 ;C ;
@@ -1382,26 +1381,14 @@ SEMICOLON:
 	.dw REVEAL,CEXIT
 	.dw LEFTBRACKET,EXIT
 
-;X :NONAME	-- xt	begin a nameless colon definition
-; HERE ] colonpc ,CF ;
-	.dw link
-	.db 0
-	.set link,*
-	.db 7,":NONAME"
-CONONAME:
-	sep colonpc
-	.dw HERE,RIGHTBRACKET
-	.dw LIT,colonpc,COMMACF,EXIT
-
 ;C [']  --		find word & compile as literal
-;   '  ['] LIT ,XT  , ; IMMEDIATE
+;   ' COMPILE LIT , ; IMMEDIATE
 ; When encountered in a colon definition, the
 ; phrase  ['] xxx  will cause   LIT,xxt  to be
 ; compiled into the colon definition (where
 ; (where xxt is the execution token of word xxx).
 ; When the colon definition executes, xxt will
 ; be put on the stack.  (All xt's are one cell.)
-;    immed BRACTICK,3,['],docolon
 	.dw link
 	.db 1
 	.set link,*
@@ -1409,16 +1396,15 @@ CONONAME:
 BRACTICK: 
 	sep colonpc
 	.dw TICK		; get xt of 'xxx'
-	.dw LIT,LIT,COMMAXT	; append LIT action
+	.dw COMPILE,LIT		; append LIT action
 	.dw COMMA,EXIT		; append xt literal
 
 ;C POSTPONE  --		postpone compile action of word
-;   BL WORD FIND
-;   DUP 0= ABORT" ?"
+;   FINDWORD
 ;   0< IF   -- xt	non immed: add code to current
 ;			def'n to compile xt later.
-;       ['] LIT ,XT  ,	add "LIT,xt,COMMAXT"
-;       ['] ,XT ,XT	to current definition
+;       COMPILE LIT ,	add "LIT,xt,COMMAXT"
+;       COMPILE ,XT	to current definition
 ;   ELSE  ,XT      immed: compile into cur. def'n
 ;   THEN ; IMMEDIATE
 	.dw link
@@ -1427,13 +1413,10 @@ BRACTICK:
 	.db 8,"POSTPONE"
 POSTPONE:
 	sep colonpc
-	.dw BL,WORD,FIND,DUP,ZEROEQUAL,XSQUOTE
-	.db 1,"?"
-	.dw QABORT,ZEROLESS,qbranch,POST1
-	.dw LIT,LIT,COMMAXT,COMMA
-	.dw LIT,COMMAXT,COMMAXT,branch,POST2
-POST1:  .dw COMMAXT
-POST2:  .dw EXIT
+	.dw FINDWORD,ZEROLESS,qbranch,POST1
+	.dw COMPILE,LIT,COMMA
+	.dw COMPILE
+POST1:  .dw COMMAXT,EXIT
 	       
 ;Z COMPILE   --		append inline execution token
 ;   R> DUP CELL+ >R @ ,XT ;
@@ -1449,8 +1432,7 @@ COMPILE:
 	sep colonpc
 	.dw RFROM,DUP,CELLPLUS,TOR
 	.dw FETCH,COMMAXT,EXIT
-; N.B.: not used in the current implementation
-
+    
 ; CONTROL STRUCTURES ============================
 
 ;C IF       -- adrs	conditional forward branch
@@ -1476,16 +1458,14 @@ THEN:
 	.dw HERE,SWAP,STOREDEST,EXIT
 
 ;C ELSE     adrs1 -- adrs2	branch for IF..ELSE
-;   ['] branch ,BRANCH  HERE DUP ,DEST
-;   SWAP  POSTPONE THEN ; IMMEDIATE
+;   POSTPONE AHEAD SWAP POSTPONE THEN ; IMMEDIATE
 	.dw link
 	.db 1
 	.set link,*
 	.db 4,"ELSE"
 ELSE:
 	sep colonpc
-	.dw LIT,branch,COMMABRANCH
-	.dw HERE,DUP,COMMADEST
+	.dw AHEAD
 	.dw SWAP,THEN,EXIT
 
 ;C BEGIN    -- adrs		target for bwd. branch
@@ -1563,19 +1543,22 @@ LFROM:
 	.dw CELL,NEGATE,LP,PLUSSTORE,EXIT
 
 ;C DO       -- adrs   L: -- 0
-;   ['] xdo ,XT   HERE		target for bwd branch
-;   0 >L ; IMMEDIATE		marker for LEAVEs
+;    0 	( no fwd branch )
+;   BEGINLOOP ; IMMEDIATE
 	.dw link
 	.db 1
 	.set link,*
 	.db 2,"DO"
 DO:
 	sep colonpc
-	.dw LIT,xdo,COMMAXT,HERE
-	.dw ZERO,TOL,EXIT
+	.dw ZERO	; no forward branch
+	.dw BEGINLOOP,EXIT
 
-;Z ENDLOOP   adrs xt --   L: 0 a1 a2 .. aN --
+;Z ENDLOOP   baddr faddr xt --   L: 0 a1 a2 .. aN --
 ;   ,BRANCH  ,DEST		backward loop
+;   ?DUP IF			resolve forward
+;        POSTPONE THEN		branch if any
+;   THEN
 ;   BEGIN L> ?DUP WHILE POSTPONE THEN REPEAT ;
 ;				resolve LEAVEs
 ; This is a common factor of LOOP and +LOOP.
@@ -1586,8 +1569,10 @@ DO:
 ENDLOOP:
 	sep colonpc
 	.dw COMMABRANCH,COMMADEST
+	.dw QDUP,qbranch,LOOP1	; is there a fwd branch?
+	.dw THEN		; resolve fwd branch
 LOOP1:  .dw LFROM,QDUP,qbranch,LOOP2
-	.dw THEN,branch,LOOP1
+	.dw THEN,branch,LOOP1	; resolve LEAVE branches
 LOOP2:  .dw EXIT
 
 ;C LOOP    adrs --   L: 0 a1 a2 .. aN --
@@ -1611,7 +1596,7 @@ PLUSLOOP:
 	.dw LIT,xplusloop,ENDLOOP,EXIT
 
 ;C LEAVE    --    L: -- adrs
-;   ['] UNLOOP ,XT
+;   COMPILE UNLOOP
 ;   ['] branch ,BRANCH   HERE DUP ,DEST  >L
 ;   ; IMMEDIATE      unconditional forward branch
 	.dw link
@@ -1620,7 +1605,7 @@ PLUSLOOP:
 	.db 5,"LEAVE"
 LEAVE:
 	sep colonpc
-	.dw LIT,unloop,COMMAXT
+	.dw COMPILE,unloop
 	.dw LIT,branch,COMMABRANCH
 	.dw HERE,DUP,COMMADEST,TOL,EXIT
 
@@ -1676,7 +1661,7 @@ ENVIRONMENTQ:
 
 ; UTILITY WORDS AND STARTUP =====================
 
-;X WORDS    --			list all words in dict.
+;T WORDS    --			list all words in dict.
 ;   LATEST @ BEGIN
 ;       DUP COUNT TYPE SPACE
 ;       NFA>LFA @
@@ -1693,7 +1678,7 @@ WDS1:   .dw DUP,COUNT,TYPE,SPACE,NFATOLFA,FETCH
 	.dw DUP,ZEROEQUAL,qbranch,WDS1
 	.dw DROP,EXIT
 
-;X .S      --			print stack contents
+;T .S      --			print stack contents
 ;   SP@ S0 - IF
 ;       SP@ S0 2 - DO I @ U. -2 +LOOP
 ;   THEN ;
@@ -1710,109 +1695,42 @@ DOTS1:  .dw II,FETCH
 	.dw UDOT,LIT,-2,XPLUSLOOP,DOTS1
 DOTS2:  .dw EXIT
 
-;X \	--			comment to end of line
-; \ 1 WORD DROP ; IMMEDIATE
-	.dw link
-	.db 1
-	.set link,*
-	.db 1,"\\"
+;Z TRUECOLD -- Hidden word invoked at start
+; holding IN when pressing enter forces a cold start
+; GENBAUD EF4? IF COLD THEN 45296 MAGIC @ = IF WARM THEN COLD ;
+TRUECOLD:
 	sep colonpc
-	.dw ONE,WORD,DROP,EXIT	
-
-;X .(	--			print to matching right paren
-; [ HEX ] 29 WORD COUNT TYPE ; IMMEDIATE
-	.dw link
-	.db 1
-	.set link,*
-	.db 2,".("
-	sep colonpc
-	.dw LIT,H'29,WORD,COUNT,TYPE,EXIT	
-
-;Z FREE 	--	n		gets the number of free dict bytes
-;	dicttop HERE -
-	.dw link
-	.db 0
-	.set link,*
-	.db 5,"DFREE"
-DFREE:
-	sep colonpc
-	.dw LIT,dicttop,HERE,MINUS,EXIT
+	.dw GENBAUD,EF4Q,QBRANCH,TRUECO1D,COLD
+TRUECO1D: ;; PseudoSam only allows 8 letter labels?!
+	.dw LIT,28912,MAGIC,FETCH,EQUAL,QBRANCH,COLD1,WARM
 
 ;Z COLD     --			cold start Forth system
-;   GENBAUD UINIT U0 #INIT CMOVE  init user area
-;   ." RCA1802 CamelForth etc."
-;   FREE . ." Dictionary Bytes free" ABORT ;
+;   UINIT U0 #INIT CMOVE WARM  init user area
 	.dw link
 	.db 0
 	.set link,*
 	.db 4,"COLD"
 COLD:
 	sep colonpc
-	.dw GENBAUD,UINIT,U0,NINIT,CMOVE
+COLD1:
+	.dw UINIT,U0,NINIT,CMOVE,WARM
+;Z WARM		--		warm start Forth system
+;   ." RCA1802 CamelForth etc."
+;   FREE . ." Dictionary Bytes free" ABORT ;
+	.dw link
+	.db 0
+	.set link,*
+	.db 4,"WARM"
+WARM:
+	sep colonpc
+WARM1:
 	.dw XSQUOTE
-	.db 67			; length of sign-on string
-	.db "RCA1802 CamelForth v1.03.1 - Membership Card Edition  19 Jul 2024"
+	.db 56			; length of sign-on string
+	.db "RCA1802 CamelForth v1.1 - MC Edition v0.1  20 Jul 2024"
 	.db H'0D,H'0A
 	.dw TYPE
-	.dw DFREE,UDOT,XSQUOTE
-	.db 24
-	.db " Dictionary Bytes free"
+	.dw UNUSED,UDOT,XSQUOTE
+	.db 23
+	.db "Dictionary Bytes free"
 	.db H'0D,H'0A
 	.dw TYPE,ABORT		; ABORT never returns
-
-; COMMON CONSTANTS =========================
-
-;Z -1	-- -1	
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"-1"
-MINUSONE:
-	ldi H'FF
-m1:
-	dec psp
-	stxd
-	str psp
-	sep nextpc
-
-;Z 0	-- 0
-	.dw link
-	.db 0
-	.set link,*
-	.db 1,"0"
-ZERO:
-	ldi H'00
-	br m1
-
-;C FALSE	-- 0	
-	.dw link
-	.db 0
-	.set link,*
-	.db 5,"FALSE"
-FALSE:
-	br ZERO
-
-;C TRUE	-- -1	
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"TRUE"
-TRUE:
-	br MINUSONE
-
-;Z 1	-- 1	
-	.dw link
-	.db 0
-	.set link,*
-	.db 1,"1"
-ONE:
-	sep constpc
-	.dw 1
-
-; EPILOGUE =========================
-
-	.equ lastword,link	; nfa of last word in dictionary
-	.equ enddict,*		; user's code starts here
-
-	.end
-

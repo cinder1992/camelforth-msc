@@ -4,7 +4,7 @@
 ; CamelForth for the RCA 1802
 ; Copyright (c) 1994,1995 Bradford J. Rodriguez
 ; Copyright (c) 2009 Harold Rabbie RCA 1802 port
-; Copyright (c) 2024 Neil Ray, Membership card implementation
+; Copyright (c) 2024 Neil Ray - Membership Card port
 ;
 ; This program is free software; you can redistribute it and/or modify
 ; it under the terms of the GNU General Public License as published by
@@ -26,7 +26,6 @@
 ;
 ; Revision history:
 ; 2009-02-09	First version for RCA 1802 based on Z80 CamelForth
-; 2024-07-19	Port for the 1802 Membership Card
 ;
 ;
 ; ===============================================
@@ -35,7 +34,9 @@
 ;   Forth words are documented as follows:
 ;x   NAME     stack -- stack    description
 ;   where x=C for ANS Forth Core words, X for ANS
-;   Extensions, Z for internal or private words.
+;   Core Extensions, S for ANS String words
+;   T for ANS Tools words, D for ANS Double words
+;   Z for internal or private words.
 ;
 ; Direct-Threaded Forth model for RCA 1802
 ; 16 bit cell, 8 bit char, 8 bit (byte) adrs unit
@@ -65,13 +66,13 @@
 ;
 ; ===============================================
 ; Memory map:
-	.equ	dicttop,H'7400		; top of usable dictionary memory
-	.equ	paramstack,H'7600	; top of parameter stack
-	.equ	returnstack,H'7800	; top of return stack
-	.equ	userarea,H'7800		; user area, must be page aligned
-	.equ	tibarea,H'7A00		; Terminal Input Buffer
-	.equ 	padarea,H'7C00		; User Pad Buffer
-	.equ	leavestack,H'8000	; top of leave stack
+	.equ	paramstack,	H'7B00	; top of parameter stack	grows down
+	.equ	returnstack,	H'7C00	; top of return stack		grows down
+	.equ	userarea,	H'7C00	; user area, page aligned	grows up
+	.equ	tibarea,	H'7D00	; Terminal Input Buffer		grows up
+	.equ	tibend,		H'7E00	; end+1 of Terminal Buffer
+	.equ 	padarea,	H'7F00	; User Pad Buffer		grows down
+	.equ	leavestack,	H'7F00	; top of leave stack		grows up
 
 	.equ	reset,H'0000 		; cold start, Forth kernel, dictionary
 
@@ -84,7 +85,7 @@
 	.equ	nextpc,4	; PC for Forth inner interpreter
 	.equ	colonpc,5	; PC for colon definitions
 	.equ	constpc,6	; PC for CONSTANT definitions
-	.equ	varpc,7		; PC for VARIABLE and SCREATE definitions
+	.equ	varpc,7		; PC for VARIABLE and CREATE1 definitions
 	.equ	createpc,8	; PC for CREATE definitions
 	.equ	userpc,9	; PC for USER definitions
 	.equ	baudr,10	; baud rate register, set by GENBAUD
@@ -94,8 +95,6 @@
 	.equ	temp2,14
 	.equ	temp3,13
 	.equ	temp4,12
-
-	.equ	sepcode,H'D0	; opcode for SEP instruction
 
 ; ===============================================
 ; Execution begins here
@@ -135,7 +134,7 @@
 	phi userpc
 
 	sex psp		; do arithmetic on param stack
-	lbr cold
+	lbr truecold
 
 ; INTERPRETER LOGIC =============================
 ; See also "defining words" at end of this file
@@ -176,9 +175,8 @@ lit:
 	str psp
 	sep nextpc
 
-
 ;C EXECUTE   i*x xt -- j*x   execute Forth word
-;C                           at 'xt'
+;                            at 'xt'
 	.dw link
 	.db 0
 	.set link,*
@@ -217,7 +215,7 @@ docolon:
 	br docolon - 1	; reset colonpc
 
 ;C VARIABLE   --      define a Forth variable
-;   SCREATE 1 CELLS ALLOT ;
+;   CREATE1 CELL ALLOT ;
 
 	.dw link
 	.db 0
@@ -225,7 +223,7 @@ docolon:
 	.db 8,"VARIABLE"
 VARIABLE:
 	sep colonpc
-	.dw SCREATE,ONE,CELLS,ALLOT,EXIT
+	.dw CREATE1,CELL,ALLOT,EXIT
 
 ; DOVAR, code action of VARIABLE, entered by sep varpc
 
@@ -259,14 +257,16 @@ docreate:
 	br docreate - 1	; reset createpc
 
 ;C CONSTANT   n --      define a Forth constant
-;   (CREATE) constpc ,CF ,
+;   (CREATE) CFCOMPILE doconst ,
 	.dw link
 	.db 0
 	.set link,*
 	.db 8,"CONSTANT"
 CONSTANT:
 	sep colonpc
-	.dw XCREATE,LIT,constpc,COMMACF,COMMA,EXIT
+	.dw XCREATE,CFCOMPILE
+	sep constpc
+	.dw COMMA,EXIT
 
 ; DOCONST, code action of CONSTANT,
 ; entered by sep constpc
@@ -281,14 +281,16 @@ doconst:  ; -- x
 	br doconst - 1	; reset constpc
 
 ;Z USER     n --        define user variable 'n'
-;   (CREATE) userpc ,CF ,
+;   (CREATE) CFCOMPILE douser ,
 	.dw link
 	.db 0
 	.set link,*
 	.db 4,"USER"
 USER:
 	sep colonpc
-	.dw XCREATE,lit,userpc,COMMACF,COMMA,EXIT
+	.dw XCREATE,CFCOMPILE
+	sep userpc
+	.dw COMMA,EXIT
 
 ; DOUSER, code action of USER,
 ; entered by sep userpc
@@ -303,15 +305,12 @@ douser:  ; -- a-addr	; assumes user area is page-aligned
 	lda codepc	; ldn codepc is IDL!
 	str psp
 	br douser - 1	; reset userpc
-	
-	;;one word padding byte to get this to compile
-	.dw 0
-	
+
 ;Z GENBAUD	--	detect the BAUD rate and set the baudr register
 	.dw link
 	.db 0
 	.set link,*
-	.db 7,"GENBAUD"
+	.db 7,"genbaud"
 GENBAUD:			;A. wait for Start bit
 	bn3  GENBAUD	;   loop while idle (EF3 false, EF3 pin high)
 					;    continue when Start bit detected
@@ -416,17 +415,6 @@ emitend2:
 	smi 1
 	bnz emitend2
 	sep nextpc	;processing will cover the STOP bit time
-	
-
-
-;Z TRACE   n --		set tracing flags in simulator
-;	.dw link	; Bit 0 : Forth tracing
-;	.db 0		; Bit 1 : Instruction tracing
-;	.set link,*	; Bit 2 : Echo ACCEPTed line
-;	.db 5,"TRACE"
-;TRACE:
-;	out 2	; recognized by simulator
-;	sep nextpc
 
 ;X BYE	i*x --	return to the monitor
 	.dw link
@@ -438,7 +426,6 @@ BYE:
 	sep nextpc
 
 ; STACK OPERATIONS ==============================
-
 
 ;C ?DUP     x -- 0 | x x    DUP if nonzero
 	.dw link
@@ -554,39 +541,6 @@ ROT:
 	ghi temp1
 	stxd
 	glo temp1
-	str psp
-	sep nextpc
-
-;X -ROT    x1 x2 x3 -- x3 x1 x2  per stack diagram
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"-ROT"
-MROT:
-	lda psp
-	plo temp3
-	lda psp
-	phi temp3
-	lda psp
-	plo temp2
-	lda psp
-	phi temp2
-	lda psp
-	plo temp1
-	ldn psp
-	phi temp1
-
-	ghi temp3
-	stxd
-	glo temp3
-	stxd
-	ghi temp1
-	stxd
-	glo temp1
-	stxd
-	ghi temp2
-	stxd
-	glo temp2
 	str psp
 	sep nextpc
 
@@ -798,6 +752,7 @@ CFETCH:
 	sep nextpc
 
 ; ARITHMETIC AND LOGICAL OPERATIONS =============
+
 ;C +       n1/u1 n2/u2 -- n3/u3     add n1+n2
 	.dw link
 	.db 0
@@ -813,8 +768,8 @@ PLUS:
 	adc		; n1 hi
 	stxd		; n1+n2 hi
 	sep nextpc
-.page	;dirty hack
-;X M+       d n -- d         add single to double
+
+;D M+       d n -- d         add single to double
 	.dw link
 	.db 0
 	.set link,*
@@ -1026,7 +981,7 @@ TWOSLASH:		; sign extension
 	shrc
 	str psp
 	sep nextpc
-.page	;dirty hack
+
 ;C LSHIFT  x1 u -- x2    logical L shift u places
 	.dw link
 	.db 0
@@ -1098,9 +1053,10 @@ PLUSSTORE:
 	str temp1	; high byte
 	sex psp		; restore
 	sep nextpc
-	
 
 ; COMPARISON OPERATIONS =========================
+
+.page 	;Page align this section
 
 ;C 0=     n/u -- flag    return true if TOS=0
 	.dw link
@@ -1122,18 +1078,6 @@ xfalse:
 	stxd
 	str psp
 	sep nextpc
-
-;C 0<>     n/u -- flag    return false if TOS=0
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"0<>"
-ZERONEQUAL:
-	lda psp
-	bnz xtrue
-	ldn psp
-	bnz xtrue
-	br xfalse
 
 ;C 0<     n -- flag      true if TOS negative
 	.dw link
@@ -1166,7 +1110,7 @@ EQUAL:
 	bnz xfalse
 	br xtrue
 
-;X <>     x1 x2 -- flag    test not eq (not ANSI)
+;X <>     x1 x2 -- flag    test not eq
 	.dw link
 	.db 0
 	.set link,*
@@ -1231,7 +1175,7 @@ ULESS:
 	inc psp		; point to u1 hi
 	br less4
 
-;X U>    u1 u2 -- flag     u1>u2 unsgd (not ANSI)
+;X U>    u1 u2 -- flag     u1>u2 unsgd
 	.dw link
 	.db 0
 	.set link,*
@@ -1240,8 +1184,54 @@ UGREATER:
 	sep colonpc
 	.dw SWAP,ULESS,EXIT
 
+; COMMON CONSTANTS =========================
+
+;Z -1	-- -1	
+	.dw link
+	.db 0
+	.set link,*
+	.db 2,"-1"
+MINUSONE:
+	dec psp
+	lbr xtrue
+
+;Z 0	-- 0
+	.dw link
+	.db 0
+	.set link,*
+	.db 1,"0"
+ZERO:
+	dec psp
+	lbr xfalse
+
+;X FALSE	-- 0	
+	.dw link
+	.db 0
+	.set link,*
+	.db 5,"FALSE"
+FALSE:
+	br ZERO
+
+;X TRUE	-- -1	
+	.dw link
+	.db 0
+	.set link,*
+	.db 4,"TRUE"
+TRUE:
+	br MINUSONE
+
+;Z 1	-- 1	
+	.dw link
+	.db 0
+	.set link,*
+	.db 1,"1"
+ONE:
+	sep constpc
+	.dw 1
+
 ; LOOP AND BRANCH OPERATIONS ====================
-	.page		; avoid out-of-page branches
+
+.page ; Page align these instructions
 
 ;Z branch   --                  branch always
 	.dw link
@@ -1272,7 +1262,7 @@ qbranch:
 	sep nextpc
 
 ;Z (do)    n1|u1 n2|u2 --  R: -- sys1 sys2
-;Z                          run-time code for DO
+;                           run-time code for DO
 ; '83 and ANSI standard loops terminate when the
 ; boundary of limit-1 and limit is crossed, in
 ; either direction.  The RCA1802 doesn't have signed
@@ -1315,7 +1305,7 @@ xdo:
 	sep nextpc
 
 ;Z (loop)   R: sys1 sys2 --  | sys1 sys2
-;Z                        run-time code for LOOP
+;                         run-time code for LOOP
 ; Add 1 to the loop index.  If loop terminates,
 ; clean up the return stack and skip the branch.
 ; Else take the inline branch.  Note that LOOP
@@ -1338,7 +1328,7 @@ xloop:
 	br loopdone
 
 ;Z (+loop)   n --   R: sys1 sys2 --  | sys1 sys2
-;Z                        run-time code for +LOOP
+;                        run-time code for +LOOP
 ; Add n to the loop index.  If loop terminates,
 ; clean up the return stack and skip the branch.
 ; Else take the inline branch.
@@ -1377,7 +1367,7 @@ loopdone:
 	br unloop
 
 ;C I        -- n   R: sys1 sys2 -- sys1 sys2
-;C                  get the innermost loop index
+;                   get the innermost loop index
 	.dw link
 	.db 0
 	.set link,*
@@ -1399,7 +1389,7 @@ II:
 	lbr PLUS	; add limit back to index
 
 ;C J        -- n   R: 4*sys -- 4*sys
-;C                  get the second loop index
+;                   get the second loop index
 	.dw link
 	.db 0
 	.set link,*
@@ -1444,7 +1434,7 @@ UNLOOP:
 
 ; MULTIPLY AND DIVIDE ===========================
 
-	.page		; avoid out-of-page branches
+.page ;Purify this code, oh holy page
 
 ;C UM*     u1 u2 -- ud   unsigned 16x16->32 mult.
 	.dw link
@@ -1675,7 +1665,7 @@ fillmore:
 filldone:
 	sep nextpc
 
-;X CMOVE   c-addr1 c-addr2 u --  move from bottom
+;S CMOVE   c-addr1 c-addr2 u --  move from bottom
 ; as defined in the ANSI optional String word set
 ; On byte machines, CMOVE and CMOVE> are logical
 ; factors of MOVE.  They are easy to implement on
@@ -1711,8 +1701,7 @@ cmovemore:
 cmovedone:
 	sep nextpc
 
-
-;X CMOVE>  c-addr1 c-addr2 u --  move from top
+;S CMOVE>  c-addr1 c-addr2 u --  move from top
 ; as defined in the ANSI optional String word set
 	.dw link
 	.db 0
@@ -1724,9 +1713,8 @@ CMOVEUP:
 	.dw RFETCH,PLUS		; end of dest + 1
 	.dw SWAP,RFETCH,PLUS	; end of src + 1
 	.dw RFROM		; count
-	.dw xcmoveup,EXIT
+	.dw *+2
 
-xcmoveup:
 	lda psp
 	plo temp1	; count lo
 	lda psp
@@ -1757,10 +1745,10 @@ xcmovemore:
 	br xcmoveloop
 xcmovedone:
 	sex psp		; restore X
-	sep nextpc
+	lbr EXIT
 
 ;Z SKIP   c-addr u c -- c-addr' u'
-;Z                          skip matching chars
+;                           skip matching chars
 ; Although SKIP, SCAN, and S= are perhaps not the
 ; ideal factors of WORD and FIND, they closely
 ; follow the string operations available on many
@@ -1808,7 +1796,7 @@ skdone:
 	sep nextpc
 
 ;Z SCAN    c-addr u c -- c-addr' u'
-;Z                      find matching char
+;                       find matching char
 	.dw link
 	.db 0
 	.set link,*
@@ -1841,7 +1829,7 @@ sc1:
 	br scloop
 
 ;Z S=    c-addr1 c-addr2 u -- n   string compare
-;Z             n<0: s1<s2, n=0: s1=s2, n>0: s1>s2
+;              n<0: s1<s2, n=0: s1=s2, n>0: s1>s2
 	.dw link
 	.db 0
 	.set link,*

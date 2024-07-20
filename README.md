@@ -7,12 +7,10 @@ This is a port of [CamelForth](http://www.camelforth.com) for use with Lee Hart'
 ## Changes from Vanilla CamelForth
 ### Additions:
 
- - New words: `INP` and `OUTP` for reading and writing directly to the
+ - New words: `inp` and `outp` for reading and writing directly to the
  1802's I/O ports
- - New words: `EF1?` `EF2?` `EF3?` `EF4?` query the status of the 1802's EF* lines
- - New word: `0<>` Returns `FALSE` if TOS = 0
- - New word: `DFREE` Returns the number of free dictionary bytes
- - New word: `GENBAUD` sets the baudrate register depending on the next received byte, in the same way as MCSMP20 does. uses code derived from [The serial binary loader](https://www.retrotechnology.com/memship/mship_binloader.html)
+ - New words: `ef1?` `ef2?` `ef3?` `ef4?` query the status of the 1802's EF* lines
+ - New word: `genbaud` sets the baudrate register depending on the next received byte, in the same way as MCSMP20 does. uses code derived from [The serial binary loader](https://www.retrotechnology.com/memship/mship_binloader.html)
 
 ### Removals:
 
@@ -22,10 +20,7 @@ This is a port of [CamelForth](http://www.camelforth.com) for use with Lee Hart'
 ### Changes: 
 
 - `ACCEPT` has been reverted to its reference implementation, and some minor enhancements have been made for modern terminals.
-- `COLD` now both 
-	1. Calls `GENBAUD` to get the baud rate
-	2. Prints the free amount of Dictionary Space
-- the Parameter Stack, Return Stack, and Leave Space have been reduced from 2048 cells to 256 cells, to make more room for Dictionary space
+- `COLD` is no longer invoked at start, instead a hidden word is invoked to generate the baudrate and to detect a warm start. to FORCE a cold start and delete all newly defined words, you can use the `COLD` word or hold down the IN button on your membership card while detecting the baud rate
 - `BYE` now jumps to 0x8B5E, the reentry point of MCSMP20
 - `KEY` and `EMIT` are both implemented using Q-as-TX and EF3-as-RX bit-banging, using code derived from [The serial binary loader](https://www.retrote)
 

@@ -75,7 +75,7 @@ CELL:
 	.db 5,"CELL+"
 CELLPLUS:
 	sep colonpc
-	.dw	CELL,PLUS,EXIT
+	.dw CELL,PLUS,EXIT
 
 ;C CELLS    n1 -- n2            cells->adrs units
 	.dw link
@@ -124,19 +124,8 @@ TOBODY:
 COMMAXT:
 	lbr COMMA
 
-;Z ,CF    PC --       append a 1-byte code field SEP <PC>
-;   HERE LIT SEPCODE OR C, ;  1802 VERSION (1 byte)
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,",CF"
-COMMACF:
-	sep colonpc
-	.dw LIT,sepcode,ORR	; make it a SEP opcode
-	.dw CCOMMA,EXIT
-
 ;Z ,EXIT    --      append hi-level EXIT action
-;   ['] EXIT ,XT ;
+;   COMPILE EXIT ;
 ; This is made a distinct word, because on an STC
 ; Forth, it appends a RET instruction, not an xt.
 	.dw link
@@ -145,7 +134,7 @@ COMMACF:
 	.db 5,",EXIT"
 CEXIT:
 	sep colonpc
-	.dw LIT,EXIT,COMMAXT,EXIT
+	.dw COMPILE,EXIT,EXIT
 
 ; CONTROL STRUCTURES ============================
 ; These words allow Forth control structure words
@@ -183,134 +172,6 @@ COMMADEST:
 	.db 5,"!DEST"
 STOREDEST:
 	lbr STORE
-	
-;Z OUTP		c p	--		Output char c on port p
-;
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"OUTP"
-OUTP:
-	lda psp		;port low byte
-	inc psp		;drop high byte
-	smi 1		;subtract 1 for correct offset
-	ani 7		;AND with 7 to set bounds
-	shl
-	shl			;shift left by 2 places
-	adi	doout & H'FF ;get low portion of offset
-	plo temppc
-	ldi 0
-	adci doout >> 8 ;get high portion of offset
-	phi temppc
-	sep temppc		;Jump to appropriate offset!
-doout:
-	out 1
-	lbr endout	;4 bytes per inst
-	out 2
-	lbr endout
-	out 3
-	lbr endout
-	out 4
-	lbr endout
-	out 5
-	lbr endout
-	out 6
-	lbr endout
-	out 7
-	lbr endout	;3 extra bytes, means we don't over/underrun
-endout:
-	inc psp	;drop the high byte
-	sep nextpc
-
-;Z INP		p	--	c	get char c from port p
-;
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"INP"
-INP:
-	ldn psp		;port low byte
-	smi 1		;subtract 1 for correct offset
-	ani 7		;AND with 7 to set bounds
-	shl
-	shl			;shift left by 2 places		
-	adi	doin & H'FF ;get low portion of offset
-	plo temppc
-	ldi 0
-	adci doin >> 8 ;get high portion of offset
-	phi temppc
-	sep temppc		;Jump to appropriate offset!
-doin:
-;;There seems to be a bug in PseudoSam that prevents
-;;the IN instruction from being recognized, so here we intentionally
-;;create it
-	.db H'69
-	lbr endin	;4 bytes per inst
-	.db H'6A
-	lbr endin
-	.db H'6B
-	lbr endin
-	.db H'6C
-	lbr endin
-	.db H'6D
-	lbr endin
-	.db H'6E
-	lbr endin
-	.db H'6F
-	lbr endin	;3 extra bytes, means we don't over/underrun
-endin:
-	sep nextpc
-
-;Z EF1?		--	c	get EF1 status
-;
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"EF1?"
-EF1Q:
-	b1 etrue
-efalse:
-	dec psp
-	ldi H'0
-	stxd
-	str psp
-	sep nextpc
-etrue:
-	dec psp
-	ldi H'FF
-	stxd
-	str psp
-	sep nextpc
-
-;Z EF2?		--	c	get EF1 status
-;
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"EF2?"
-EF2Q:
-	b2 etrue
-	br efalse
-
-;Z EF3?		--	c	get EF1 status
-;
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"EF3?"
-EF3Q:
-	b3 etrue
-	br efalse
-
-;Z EF4?		--	c	get EF1 status
-;
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"EF4?"
-EF4Q:
-	b4 etrue
-	br efalse
 
 ; HEADER STRUCTURE ==============================
 ; The structure of the Forth dictionary headers
