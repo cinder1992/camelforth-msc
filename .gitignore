@@ -1,2 +1,6 @@
 CF1802.*
 A18.COM
+*.OBJ
+*.LST
+*.hex
+*.lst

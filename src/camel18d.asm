@@ -24,7 +24,7 @@
 ;
 ; ===============================================
 ; CAMEL18D.ASM: CPU and Model Dependencies
-;   Source code is for the A180 assembler.
+;   Source code is for the A18 assembler.
 ;   Forth words are documented as follows:
 ;*   NAME     stack -- stack    description
 ;   Word names in upper case are from the ANS
@@ -43,98 +43,98 @@
 ; and so are defined as CODE words.
 
 ;C ALIGN    --                         align HERE
-	.dw link
-	.db 0
-	.set link,*
-	.db 5,"ALIGN"
-ALIGN:
-noop:   sep nextpc
+	DW link
+	DB 0
+link SET $
+	DB 5,"ALIGN"
+ALIGN
+noop   sep nextpc
 
 ;C ALIGNED  addr -- a-addr       align given addr
-	.dw link
-	.db 0
-	.set link,*
-	.db 7,"ALIGNED"
-ALIGNED:
+	DW link
+	DB 0
+link SET $
+	DB 7,"ALIGNED"
+ALIGNED
 	sep nextpc	; noop
 
 ;Z CELL     -- n                 size of one cell
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"CELL"
-CELL:
+	DW link
+	DB 0
+link SET $
+	DB 4,"CELL"
+CELL
 	sep constpc
-	.dw 2
+	DW 2
 
 ;C CELL+    a-addr1 -- a-addr2      add cell size
 ;   2 + ;
-	.dw link
-	.db 0
-	.set link,*
-	.db 5,"CELL+"
-CELLPLUS:
+	DW link
+	DB 0
+link SET $
+	DB 5,"CELL+"
+CELLPLUS
 	sep colonpc
-	.dw CELL,PLUS,EXIT
+	DW CELL,PLUS,EXIT
 
 ;C CELLS    n1 -- n2            cells->adrs units
-	.dw link
-	.db 0
-	.set link,*
-	.db 5,"CELLS"
-CELLS:
-	lbr twostar
+	DW link
+	DB 0
+link SET $
+	DB 5,"CELLS"
+CELLS
+	lbr TWOSTAR
 
 ;C CHAR+    c-addr1 -- c-addr2   add char size
-	.dw link
-	.db 0
-	.set link,*
-	.db 5,"CHAR+"
-CHARPLUS:
-	lbr oneplus
+	DW link
+	DB 0
+link SET $
+	DB 5,"CHAR+"
+CHARPLUS
+	lbr ONEPLUS
 
 ;C CHARS    n1 -- n2            chars->adrs units
-	.dw link
-	.db 0
-	.set link,*
-	.db 5,"CHARS"
-CHARS:
+	DW link
+	DB 0
+link SET $
+	DB 5,"CHARS"
+CHARS
 	sep nextpc	; noop
 
 ;C >BODY    xt -- a-addr      adrs of param field
 ;   3 + ;                     1802 (3 byte code field for CREATE)
 ; ANSI 6.1.0550 says that >BODY only applies to CREATE'd words
-	.dw link
-	.db 0
-	.set link,*
-	.db 5,">BODY"
-TOBODY:
+	DW link
+	DB 0
+link SET $
+	DB 5,">BODY"
+TOBODY
 	sep colonpc
-    	.dw LIT,3,PLUS,EXIT
+    	DW LIT,3,PLUS,EXIT
 
 ;X COMPILE,  xt --         append execution token
 ; I called this word ,XT before I discovered that
 ; it is defined in the ANSI standard as COMPILE,.
 ; On a DTC Forth this simply appends xt (like , )
 ; but on an STC Forth this must append 'CALL xt'.
-	.dw link
-	.db 0
-	.set link,*
-	.db 8,"COMPILE,"
-COMMAXT:
+	DW link
+	DB 0
+link SET $
+	DB 8,"COMPILE,"
+COMMAXT
 	lbr COMMA
 
 ;Z ,EXIT    --      append hi-level EXIT action
 ;   COMPILE EXIT ;
 ; This is made a distinct word, because on an STC
 ; Forth, it appends a RET instruction, not an xt.
-	.dw link
-	.db 0
-	.set link,*
-	.db 5,",EXIT"
-CEXIT:
+	DW link
+	DB 0
+link SET $
+	DB 5,",EXIT"
+CEXIT
 	sep colonpc
-	.dw COMPILE,EXIT,EXIT
+	DW COMPILE,EXIT,EXIT
 
 ; CONTROL STRUCTURES ============================
 ; These words allow Forth control structure words
@@ -144,33 +144,33 @@ CEXIT:
 ; xt is the branch operator to use, e.g. qbranch
 ; or (loop).  It does NOT append the destination
 ; address.  On the RCA1802 this is equivalent to ,XT.
-	.dw link
-	.db 0
-	.set link,*
-	.db 7,",BRANCH"
-COMMABRANCH:
+	DW link
+	DB 0
+link SET $
+	DB 7,",BRANCH"
+COMMABRANCH
 	lbr COMMA
 
 ;Z ,DEST   dest --        append a branch address
 ; This appends the given destination address to
 ; the branch instruction.  On the RCA1802 this is ','
 ; ...other CPUs may use relative addressing.
-	.dw link
-	.db 0
-	.set link,*
-	.db 5,",DEST"
-COMMADEST:
+	DW link
+	DB 0
+link SET $
+	DB 5,",DEST"
+COMMADEST
 	lbr COMMA
 
 ;Z !DEST   dest adrs --    change a branch dest'n
 ; Changes the destination address found at 'adrs'
 ; to the given 'dest'.  On the Z80 this is '!'
 ; ...other CPUs may need relative addressing.
-	.dw link
-	.db 0
-	.set link,*
-	.db 5,"!DEST"
-STOREDEST:
+	DW link
+	DB 0
+link SET $
+	DB 5,"!DEST"
+STOREDEST
 	lbr STORE
 
 ; HEADER STRUCTURE ==============================

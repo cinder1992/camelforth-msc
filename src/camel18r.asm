@@ -23,7 +23,7 @@
 ;
 ; ===============================================
 ; CAMEL18R.ASM: 1802 CPU Extentions
-;   Source code is for the A180 assembler.
+;   Source code is for the A18 assembler.
 ;   Forth words are documented as follows:
 ;*   NAME     stack -- stack    description
 ;   Word names in upper case are from the ANS
@@ -39,24 +39,24 @@
 
 ;Z outp		c p	--		Output char c on port p
 ;
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"outp"
-OUTP:
+	DW link
+	DB 0
+link SET $
+	DB 4,"outp"
+OUTP
 	lda psp		;port low byte
 	inc psp		;drop high byte
 	smi 1		;subtract 1 for correct offset
 	ani 7		;AND with 7 to set bounds
 	shl
 	shl			;shift left by 2 places
-	adi	doout & H'FF ;get low portion of offset
+	adi	doout.0 ;get low portion of offset
 	plo temppc
 	ldi 0
-	adci doout >> 8 ;get high portion of offset
+	adci doout.1 ;get high portion of offset
 	phi temppc
 	sep temppc		;Jump to appropriate offset!
-doout:
+doout
 	out 1
 	inc psp			;drop the high byte
 	sep nextpc
@@ -85,95 +85,104 @@ doout:
 	inc psp
 	sep nextpc
 	nop
-endout:		;safety cusion if `8 OUT` is executed
+endout		;safety cusion if `8 OUT` is executed
 	inc psp	;drop the high byte
 	sep nextpc
 
 ;Z inp		p	--	c	get char c from port p
 ;
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"inp"
-INP:
+	DW link
+	DB 0
+link SET $
+	DB 3,"inp"
+INP
 	ldn psp		;port low byte
 	smi 1		;subtract 1 for correct offset
 	ani 7		;AND with 7 to set bounds
 	shl			;shift left by 1 places		
-	adi	doin & H'FF ;get low portion of offset
+	adi	doin.0 ;get low portion of offset
 	plo temppc
 	ldi 0
-	adci doin >> 8 ;get high portion of offset
+	adci doin.1 ;get high portion of offset
 	phi temppc
 	sep temppc		;Jump to appropriate offset!
-doin:
-;;There seems to be a bug in PseudoSam that prevents
-;;the IN instruction from being recognized, so here we intentionally
-;;create it with .db H'6X
-	.db H'69
+doin
+	inp 1
 	sep nextpc	;2 bytes per table entry!
-	.db H'6A
+	inp 2
 	sep nextpc
-	.db H'6B
+	inp 3
 	sep nextpc
-	.db H'6C
+	inp 4
 	sep nextpc
-	.db H'6D
+	inp 5
 	sep nextpc
-	.db H'6E
+	inp 6
 	sep nextpc
-	.db H'6F
+	inp 7
 	sep nextpc
-endin:			;Safety cusion if `8 INP` is executed
+endin			;Safety cusion if `8 INP` is executed
 	sep nextpc
 
 ;Z ef1?		--	c	get EF1 status
 ;
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"ef1?"
-EF1Q:
+	DW link
+	DB 0
+link SET $
+	DB 4,"ef1?"
+EF1Q
 	b1 etrue
-efalse:
+efalse
 	dec psp
-	ldi H'0
+	ldi $0
 	stxd
 	str psp
 	sep nextpc
-etrue:
+etrue
 	dec psp
-	ldi H'FF
+	ldi $FF
 	stxd
 	str psp
 	sep nextpc
 
 ;Z ef2?		--	c	get EF2 status
 ;
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"ef2?"
-EF2Q:
+	DW link
+	DB 0
+link SET $
+	DB 4,"ef2?"
+EF2Q
 	b2 etrue
 	br efalse
 
 ;Z ef3?		--	c	get EF3 status
 ;
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"ef3?"
-EF3Q:
+	DW link
+	DB 0
+link SET $
+	DB 4,"ef3?"
+EF3Q
 	b3 etrue
 	br efalse
 
 ;Z ef4?		--	c	get EF4 status
 ;
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"ef4?"
-EF4Q:
+	DW link
+	DB 0
+link SET $
+	DB 4,"ef4?"
+EF4Q
 	b4 etrue
 	br efalse
+	
+	DW link
+	DB 1
+link SET $
+	DB 7,"[ansi?]"
+ansiq
+	sep constpc
+	IF ANSI NE 0
+	DW $FFFF
+	ELSE
+	DW 0
+	ENDI

@@ -1,4 +1,3 @@
-
 ; Listing 2.
 ; ===============================================
 ; CamelForth for the RCA 1802
@@ -26,11 +25,13 @@
 ;
 ; Revision history:
 ; 2009-02-09	First version for RCA 1802 based on Z80 CamelForth
+; 2024-07-19	Initial port to the 1802 Membership card
+; 2024-07-22	Port to the modern A18 cross-assembler
 ;
 ;
 ; ===============================================
 ; CAMEL18.ASM: Code Primitives
-;   Source code is for the A180 assembler.
+;   Source code is for the A18 assembler.
 ;   Forth words are documented as follows:
 ;x   NAME     stack -- stack    description
 ;   where x=C for ANS Forth Core words, X for ANS
@@ -64,97 +65,25 @@
 ;		Byte [0]	; LSB
 ;		Byte [1]
 ;
-; ===============================================
-; Memory map:
-	.equ	paramstack,	H'7B00	; top of parameter stack	grows down
-	.equ	returnstack,	H'7C00	; top of return stack		grows down
-	.equ	userarea,	H'7C00	; user area, page aligned	grows up
-	.equ	tibarea,	H'7D00	; Terminal Input Buffer		grows up
-	.equ	tibend,		H'7E00	; end+1 of Terminal Buffer
-	.equ 	padarea,	H'7F00	; User Pad Buffer		grows down
-	.equ	leavestack,	H'7F00	; top of leave stack		grows up
-
-	.equ	reset,H'0000 		; cold start, Forth kernel, dictionary
-
-; ===============================================
-; Register usage
-	.equ	codepc,0	; PC for code words
-	.equ	ip,1		; Forth interpreter pointer
-	.equ	psp,2		; Forth parameter stack pointer
-	.equ	rsp,3		; Forth return stack pointer
-	.equ	nextpc,4	; PC for Forth inner interpreter
-	.equ	colonpc,5	; PC for colon definitions
-	.equ	constpc,6	; PC for CONSTANT definitions
-	.equ	varpc,7		; PC for VARIABLE and CREATE1 definitions
-	.equ	createpc,8	; PC for CREATE definitions
-	.equ	userpc,9	; PC for USER definitions
-	.equ	baudr,10	; baud rate register, set by GENBAUD
-
-	.equ	temppc,15	; temporary registers
-	.equ	temp1,15
-	.equ	temp2,14
-	.equ	temp3,13
-	.equ	temp4,12
-
-; ===============================================
-; Execution begins here
-	.org	reset		; cold start address
-				; initialize registers
-	ldi paramstack & H'0FF
-	plo psp
-	ldi paramstack >> 8
-	phi psp
-	ldi returnstack & H'0FF
-	plo rsp
-	ldi returnstack >> 8
-	phi rsp
-	ldi nextd & H'0FF
-	plo nextpc
-	ldi nextd >> 8
-	phi nextpc
-	ldi docolon & H'0FF
-	plo colonpc
-	ldi docolon >> 8
-	phi colonpc
-	ldi doconst & H'0FF
-	plo constpc
-	ldi doconst >> 8
-	phi constpc
-	ldi dovar & H'0FF
-	plo varpc
-	ldi dovar >> 8
-	phi varpc
-	ldi docreate & H'0FF
-	plo createpc
-	ldi docreate >> 8
-	phi createpc
-	ldi douser & H'0FF
-	plo userpc
-	ldi douser >> 8
-	phi userpc
-
-	sex psp		; do arithmetic on param stack
-	lbr truecold
-
 ; INTERPRETER LOGIC =============================
 ; See also "defining words" at end of this file
 ;
 	sep codepc
-nextd:	 		; call with SEP nextpc
+nextd	 		; call with SEP nextpc
 	lda ip		;
 	phi codepc
 	lda ip
 	plo codepc
 	br nextd - 1
 
-	.set link,0		; end of dictionary
+link SET 0		; end of dictionary
 
 ;C EXIT     --      exit a colon definition
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"EXIT"
-EXIT:
+	DW link
+	DB 0
+link SET $
+	DB 4,"EXIT"
+EXIT
 	lda rsp
 	phi ip
 	lda rsp
@@ -163,11 +92,11 @@ EXIT:
 
 ;Z lit      -- x    fetch inline literal to stack
 ; This is the primitive compiled by LITERAL.
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"lit"
-lit:
+	DW link
+	DB 0
+link SET $
+	DB 3,"lit"
+LIT
 	lda ip	; high byte
  	dec psp
 	stxd
@@ -177,17 +106,17 @@ lit:
 
 ;C EXECUTE   i*x xt -- j*x   execute Forth word
 ;                            at 'xt'
-	.dw link
-	.db 0
-	.set link,*
-	.db 7,"EXECUTE"
-EXECUTE:
-	ldi ex1 & H'0FF	; switch to another PC
+	DW link
+	DB 0
+link SET $
+	DB 7,"EXECUTE"
+EXECUTE
+	ldi ex1 AND $0FF	; switch to another PC
 	plo temppc	; because we need to enter
-	ldi ex1 >> 8	; code fields with codepc
+	ldi ex1 SHR 8	; code fields with codepc
 	phi temppc
 	sep temppc
-ex1:
+ex1
 	lda psp		; lo byte
  	plo codepc
 	lda psp		; hi byte
@@ -201,7 +130,7 @@ ex1:
 ; (internal code fragment, not a Forth word)
 
 	sep nextpc
-docolon:
+docolon
 	glo ip		; push IP to return stack
 	dec rsp
 	str rsp
@@ -217,18 +146,18 @@ docolon:
 ;C VARIABLE   --      define a Forth variable
 ;   CREATE1 CELL ALLOT ;
 
-	.dw link
-	.db 0
-	.set link,*
-	.db 8,"VARIABLE"
-VARIABLE:
+	DW link
+	DB 0
+link SET $
+	DB 8,"VARIABLE"
+VARIABLE
 	sep colonpc
-	.dw CREATE1,CELL,ALLOT,EXIT
+	DW CREATE1,CELL,ALLOT,EXIT
 
 ; DOVAR, code action of VARIABLE, entered by sep varpc
 
 	sep nextpc
-dovar:  		; -- a-addr
+dovar			; -- a-addr
 	ghi codepc	; high byte
 	dec psp
 	stxd
@@ -238,7 +167,7 @@ dovar:  		; -- a-addr
 
 ; DOCREATE, code action of CREATE'd word
 	sep codepc
-docreate:
+docreate
 	lda codepc		; high byte of DOES> part
 	phi temppc
 	lda codepc		; low byte of DOES>
@@ -258,21 +187,21 @@ docreate:
 
 ;C CONSTANT   n --      define a Forth constant
 ;   (CREATE) CFCOMPILE doconst ,
-	.dw link
-	.db 0
-	.set link,*
-	.db 8,"CONSTANT"
-CONSTANT:
+	DW link
+	DB 0
+link SET $
+	DB 8,"CONSTANT"
+CONSTANT
 	sep colonpc
-	.dw XCREATE,CFCOMPILE
+	DW XCREATE,CFCOMPILE
 	sep constpc
-	.dw COMMA,EXIT
+	DW COMMA,EXIT
 
 ; DOCONST, code action of CONSTANT,
 ; entered by sep constpc
 
 	sep nextpc
-doconst:  ; -- x
+doconst  ; -- x
 	lda codepc		; high byte
 	dec psp
 	stxd
@@ -282,23 +211,23 @@ doconst:  ; -- x
 
 ;Z USER     n --        define user variable 'n'
 ;   (CREATE) CFCOMPILE douser ,
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"USER"
-USER:
+	DW link
+	DB 0
+link SET $
+	DB 4,"USER"
+USER
 	sep colonpc
-	.dw XCREATE,CFCOMPILE
+	DW XCREATE,CFCOMPILE
 	sep userpc
-	.dw COMMA,EXIT
+	DW COMMA,EXIT
 
 ; DOUSER, code action of USER,
 ; entered by sep userpc
 
 	sep nextpc
-douser:  ; -- a-addr	; assumes user area is page-aligned
+douser  ; -- a-addr	; assumes user area is page-aligned
 			; and no more than 256 user variables
-	ldi userarea >> 8	; address high byte
+	ldi userarea SHR 8	; address high byte
 	dec psp
 	stxd
 	inc codepc	; point to LSB of user offset
@@ -307,15 +236,15 @@ douser:  ; -- a-addr	; assumes user area is page-aligned
 	br douser - 1	; reset userpc
 
 ;Z GENBAUD	--	detect the BAUD rate and set the baudr register
-	.dw link
-	.db 0
-	.set link,*
-	.db 7,"genbaud"
-GENBAUD:			;A. wait for Start bit
+	DW link
+	DB 0
+link SET $
+	DB 7,"genbaud"
+GENBAUD			;A. wait for Start bit
 	bn3  GENBAUD	;   loop while idle (EF3 false, EF3 pin high)
 					;    continue when Start bit detected
 					;   (EF3 true, EF3 pin goes low)
-LoopB:				;B. wait for Data bit D5=1 to begin
+LoopB				;B. wait for Data bit D5=1 to begin
 	b3 LoopB		;   loop while EF3 true (EF3 pin low)
 					;   continue when EF3 false (pin goes high)
 	ldi 0			;1
@@ -324,10 +253,10 @@ LoopB:				;B. wait for Data bit D5=1 to begin
 	plo baudr		;5	long nop, timed for the recv command
 	nop				;6.5 2 NOPs for 3 instruction times
 	nop				;8   (best detection margin at 9600 baud)
-Time:				;   measure remaining time in Data bit D5
+Time				;   measure remaining time in Data bit D5
 	adi 1			;9  D=D+1 for each loop
 	bn3  Time		;10 ...loop until end of bit
-LoopC:
+LoopC
 	b3	LoopC		; Wait for stop bit
 	;str psp			;store on the stack
 	;out 4			;debug baudrate constant
@@ -336,29 +265,29 @@ LoopC:
 	sep nextpc
 
 ;C KEY		  -- c	gets a keycode from the console
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"KEY"
-KEY:
+	DW link
+	DB 0
+link SET $
+	DB 3,"KEY"
+KEY
 	ldi 0
 	dec psp
 	stxd			;low high byte
-	ldi H'FF		;Initialize the byte
+	ldi $FF		;Initialize the byte
 	str psp			;Put it on the stack
 	ghi baudr		;put the baud constant into D
-keyloop:
+keyloop
 	bn3	keyloop		;wait for start bit
 	shr				;shift right to half the delay
 	skp				;skip over the get delay
-nextbit:
+nextbit
 	ghi baudr		;1 get delay constant
-delay1:
+delay1
 	smi 1			;2 decrement delay
 	bnz delay1		;3 loop until 0, DF = 1
 	b3 keyzero		;4 test next bit
 	skp				;5 leave DF = 1 if bit is 1
-keyzero:	
+keyzero	
 	shr				;5 set DF = 0 if bit is 0
 	ldn psp			;6 get byte
 	shrc			;7 shift bit into stack, D7 = DF, DF = D0
@@ -366,44 +295,44 @@ keyzero:
 	lbdf nextbit	;9.5 keep going until you encounter the STOP bit
 	;out 4			;output the byte received to the LEDs
 	ghi baudr
-delay2:
+delay2
 	smi 1
 	bnz delay2		;delay until the end of the stop bit
 	;dec psp			;point back to the received character
 	sep nextpc
 	
 ;C EMIT     c --    output character to console
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"EMIT"
-EMIT:
+	DW link
+	DB 0
+link SET $
+	DB 4,"EMIT"
+EMIT
 	ldi 0
 	shr		;DF = 0
-emit1:
+emit1
 	bdf emitloop	;9 detect carry	
 	seq			;10 generate 0 bit
 	skp			;11 skip
-emitloop: 
+emitloop 
 	req			;12 generate 1 bit
 	ghi baudr	;13 get baud constant
 	;smi 0
-emitdelay:
+emitdelay
 	smi 1		;2 
 	bnz emitdelay	;3
 	ldx		;4 get bit
 	shrc		;5 D0 = DF, D7 = 1
 	str psp		;6 put bit back
-	xri H'FF	;7 check if we have 0xFF
+	xri $FF	;7 check if we have 0xFF
 	bnz emit1   ;8 
 	bdf emit2	; generate last bit
 	seq
 	skp
-emit2:
+emit2
 	req
 	ghi baudr	;get the baud constant
 	;adi 0
-emitend:
+emitend
 	smi 1
 	bnz emitend
 	inc psp	;pop char off of stack
@@ -411,28 +340,28 @@ emitend:
 	req
 	ghi baudr
 	;adi 5
-emitend2:
+emitend2
 	smi 1
 	bnz emitend2
 	sep nextpc	;processing will cover the STOP bit time
 
 ;X BYE	i*x --	return to the monitor
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"BYE"
-BYE:
-	lbr H'8B5E
+	DW link
+	DB 0
+link SET $
+	DB 3,"BYE"
+BYE
+	lbr $8B5E
 	sep nextpc
 
 ; STACK OPERATIONS ==============================
 
 ;C ?DUP     x -- 0 | x x    DUP if nonzero
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"?DUP"
-QDUP:
+	DW link
+	DB 0
+link SET $
+	DB 4,"?DUP"
+QDUP
 	lda psp		; get low byte
 	or		; point to high byte
 	dec psp
@@ -440,11 +369,11 @@ QDUP:
 	sep nextpc
 
 ;C DUP      x -- x x      duplicate top of stack
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"DUP"
-DUP:
+	DW link
+	DB 0
+link SET $
+	DB 3,"DUP"
+DUP
 	lda psp		; lo byte
 	plo temp1
 	ldn psp		; high byte
@@ -456,21 +385,21 @@ DUP:
 	sep  nextpc
 
 ;C DROP     x --          drop top of stack
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"DROP"
-DROP:
+	DW link
+	DB 0
+link SET $
+	DB 4,"DROP"
+DROP
 	inc psp
 	inc psp
 	sep nextpc
 
 ;C SWAP     x1 x2 -- x2 x1    swap top two items
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"SWAP"
-SWAP:
+	DW link
+	DB 0
+link SET $
+	DB 4,"SWAP"
+SWAP
 	lda psp		; x2 lo
 	plo temp2
 	lda psp		; x2 hi
@@ -491,11 +420,11 @@ SWAP:
 	sep nextpc
 
 ;C OVER    x1 x2 -- x1 x2 x1   per stack diagram
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"OVER"
-OVER:
+	DW link
+	DB 0
+link SET $
+	DB 4,"OVER"
+OVER
 	inc psp
 	inc psp
 	lda psp		; x1 lo
@@ -512,11 +441,11 @@ OVER:
 	sep nextpc
 
 ;C ROT    x1 x2 x3 -- x2 x3 x1  per stack diagram
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"ROT"
-ROT:
+	DW link
+	DB 0
+link SET $
+	DB 3,"ROT"
+ROT
 	lda psp
 	plo temp3
 	lda psp
@@ -544,12 +473,45 @@ ROT:
 	str psp
 	sep nextpc
 
+;X -ROT    x1 x2 x3 -- x3 x1 x2  per stack diagram
+	DW link
+	DB 0
+link SET $
+	DB 4,"-ROT"
+MROT
+	lda psp
+	plo temp3
+	lda psp
+	phi temp3
+	lda psp
+	plo temp2
+	lda psp
+	phi temp2
+	lda psp
+	plo temp1
+	ldn psp
+	phi temp1
+
+	ghi temp3
+	stxd
+	glo temp3
+	stxd
+	ghi temp1
+	stxd
+	glo temp1
+	stxd
+	ghi temp2
+	stxd
+	glo temp2
+	str psp
+	sep nextpc
+
 ;X NIP    x1 x2 -- x2           per stack diagram
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"NIP"
-NIP:
+	DW link
+	DB 0
+link SET $
+	DB 3,"NIP"
+NIP
 	lda psp		; x2 lo
 	plo temp2
 	lda psp		; x2 hi
@@ -560,11 +522,11 @@ NIP:
 	sep nextpc
 
 ;X TUCK   x1 x2 -- x2 x1 x2     per stack diagram
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"TUCK"
-TUCK:
+	DW link
+	DB 0
+link SET $
+	DB 4,"TUCK"
+TUCK
 	lda psp		; x2 lo
 	plo temp2
 	lda psp		; x2 hi
@@ -589,11 +551,11 @@ TUCK:
 	sep nextpc
 
 ;C >R    x --   R: -- x   push to return stack
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,">R"
-TOR:
+	DW link
+	DB 0
+link SET $
+	DB 2,">R"
+TOR
 	lda psp		; x lo
 	dec rsp
 	str rsp
@@ -603,11 +565,11 @@ TOR:
 	sep nextpc
 
 ;C R>    -- x    R: x --   pop from return stack
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"R>"
-RFROM:
+	DW link
+	DB 0
+link SET $
+	DB 2,"R>"
+RFROM
 	lda rsp		; x hi
 	dec psp
 	stxd
@@ -616,11 +578,11 @@ RFROM:
 	sep nextpc
 
 ;C R@    -- x     R: x -- x   fetch from rtn stk
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"R@"
-RFETCH:
+	DW link
+	DB 0
+link SET $
+	DB 2,"R@"
+RFETCH
 	lda rsp		; x hi
 	dec psp
 	stxd
@@ -630,11 +592,11 @@ RFETCH:
 	sep nextpc
 
 ;Z SP@  -- a-addr       get data stack pointer
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"SP@"
-SPFETCH:
+	DW link
+	DB 0
+link SET $
+	DB 3,"SP@"
+SPFETCH
 	glo psp
 	plo temp1
 	ghi psp
@@ -645,11 +607,11 @@ SPFETCH:
 	sep nextpc
 
 ;Z SP!  a-addr --       set data stack pointer
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"SP!"
-SPSTORE:
+	DW link
+	DB 0
+link SET $
+	DB 3,"SP!"
+SPSTORE
 	lda psp		; a lo
 	plo temp1
 	ldn psp		; a hi
@@ -659,11 +621,11 @@ SPSTORE:
 	sep nextpc
 
 ;Z RP@  -- a-addr       get return stack pointer
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"RP@"
-RPFETCH:
+	DW link
+	DB 0
+link SET $
+	DB 3,"RP@"
+RPFETCH
 	ghi rsp
 	dec psp
 	stxd
@@ -672,11 +634,11 @@ RPFETCH:
 	sep nextpc
 
 ;Z RP!  a-addr --       set return stack pointer
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"RP!"
-RPSTORE:
+	DW link
+	DB 0
+link SET $
+	DB 3,"RP!"
+RPSTORE
 	lda psp
 	plo rsp
 	lda psp
@@ -686,11 +648,11 @@ RPSTORE:
 ; MEMORY AND I/O OPERATIONS =====================
 
 ;C !        x a-addr --   store cell in memory
-	.dw link
-	.db 0
-	.set link,*
-	.db 1,"!"
-STORE:
+	DW link
+	DB 0
+link SET $
+	DB 1,"!"
+STORE
 	lda psp		; a lo
 	plo temp1
 	lda psp		; a hi
@@ -705,11 +667,11 @@ STORE:
 	sep nextpc
 
 ;C C!      char c-addr --    store char in memory
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"C!"
-CSTORE:
+	DW link
+	DB 0
+link SET $
+	DB 2,"C!"
+CSTORE
 	lda psp		; a lo
 	plo temp1
 	lda psp		; a hi
@@ -720,11 +682,11 @@ CSTORE:
 	sep nextpc
 
 ;C @       a-addr -- x   fetch cell from memory
-	.dw link
-	.db 0
-	.set link,*
-	.db 1,"@"
-FETCH:
+	DW link
+	DB 0
+link SET $
+	DB 1,"@"
+FETCH
 	lda psp		; a lo
 	plo temp1
 	ldn psp		; a hi
@@ -736,11 +698,11 @@ FETCH:
 	sep nextpc
 
 ;C C@     c-addr -- char   fetch char from memory
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"C@"
-CFETCH:
+	DW link
+	DB 0
+link SET $
+	DB 2,"C@"
+CFETCH
 	lda psp		; a lo
 	plo temp1
 	ldn psp		; a hi
@@ -754,11 +716,11 @@ CFETCH:
 ; ARITHMETIC AND LOGICAL OPERATIONS =============
 
 ;C +       n1/u1 n2/u2 -- n3/u3     add n1+n2
-	.dw link
-	.db 0
-	.set link,*
-	.db 1,"+"
-PLUS:
+	DW link
+	DB 0
+link SET $
+	DB 1,"+"
+PLUS
 	lda psp		; n2 lo
 	inc psp
 	add		; n1 lo
@@ -770,11 +732,11 @@ PLUS:
 	sep nextpc
 
 ;D M+       d n -- d         add single to double
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"M+"
-MPLUS:
+	DW link
+	DB 0
+link SET $
+	DB 2,"M+"
+MPLUS
 ; Double on stack:  byte[1] byte[0] byte[3] byte[2]
 
 	lda psp		; n lo
@@ -794,13 +756,13 @@ MPLUS:
 	dec psp
 	dec psp		; point to d[2]
 	ghi temp1	; sign of n
-	ani H'80
+	ani $80
 	bnz mp1		; negative ->
 	ldi 0		; positive sign extend
 	br mp2
-mp1:
-	ldi H'FF	; negative sign extend
-mp2:
+mp1
+	ldi $FF	; negative sign extend
+mp2
 	phi temp1
 	adc
 	str psp		; update d[2]
@@ -811,11 +773,11 @@ mp2:
 	sep nextpc
 
 ;C -      n1/u1 n2/u2 -- n3/u3    subtract n1-n2
-	.dw link
-	.db 0
-	.set link,*
-	.db 1,"-"
-MINUS:
+	DW link
+	DB 0
+link SET $
+	DB 1,"-"
+MINUS
 	lda psp		; n2 lo
 	inc psp
 	sd		; n1 lo
@@ -827,11 +789,11 @@ MINUS:
 	sep nextpc
 
 ;C AND    x1 x2 -- x3            logical AND
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"AND"
-ANDD:
+	DW link
+	DB 0
+link SET $
+	DB 3,"AND"
+ANDD
 	lda psp		; n2 lo
 	inc psp
 	and		; n1 lo
@@ -843,11 +805,11 @@ ANDD:
 	sep nextpc
 
 ;C OR     x1 x2 -- x3           logical OR
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"OR"
-ORR:
+	DW link
+	DB 0
+link SET $
+	DB 2,"OR"
+ORR
 	lda psp		; n2 lo
 	inc psp
 	or		; n1 lo
@@ -859,11 +821,11 @@ ORR:
 	sep nextpc
 
 ;C XOR    x1 x2 -- x3            logical XOR
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"XOR"
-XORR:
+	DW link
+	DB 0
+link SET $
+	DB 3,"XOR"
+XORR
 	lda psp		; n2 lo
 	inc psp
 	xor		; n1 lo
@@ -875,71 +837,71 @@ XORR:
 	sep nextpc
 
 ;C INVERT   x1 -- x2            bitwise inversion
-	.dw link
-	.db 0
-	.set link,*
-	.db 6,"INVERT"
-INVERT:
+	DW link
+	DB 0
+link SET $
+	DB 6,"INVERT"
+INVERT
 	ldn psp		; x lo
-	xri H'FF
+	xri $FF
 	str psp
 	inc psp
 	ldn psp		; x hi
-	xri H'FF
+	xri $FF
 	stxd
 	sep nextpc
 
 ;C NEGATE   x1 -- x2            two's complement
-	.dw link
-	.db 0
-	.set link,*
-	.db 6,"NEGATE"
-NEGATE:
+	DW link
+	DB 0
+link SET $
+	DB 6,"NEGATE"
+NEGATE
 	ldn psp		; x1 lo
-	sdi H'0
+	sdi $0
 	str psp
 	inc psp
 	ldn psp		; x1 hi
-	sdbi H'0
+	sdbi $0
 	stxd
 	sep nextpc
 
 ;C 1+      n1/u1 -- n2/u2       add 1 to TOS
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"1+"
-ONEPLUS:
+	DW link
+	DB 0
+link SET $
+	DB 2,"1+"
+ONEPLUS
 	ldn psp		; n1 lo
-	adi H'1
+	adi $1
 	str psp
 	inc psp
 	ldn psp		; n1 hi
-	adci H'0
+	adci $0
 	stxd
 	sep nextpc
 
 ;C 1-      n1/u1 -- n2/u2     subtract 1 from TOS
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"1-"
-ONEMINUS:
+	DW link
+	DB 0
+link SET $
+	DB 2,"1-"
+ONEMINUS
 	ldn psp		; n1 lo
-	smi H'1
+	smi $1
 	str psp
 	inc psp
 	ldn psp		; n1 hi
-	smbi H'0
+	smbi $0
 	stxd
 	sep nextpc
 
 ;Z ><      x1 -- x2         swap bytes (not ANSI)
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"><"
-swapbytes:
+	DW link
+	DB 0
+link SET $
+	DB 2,"><"
+swapbytes
 	lda psp
 	plo temp1
 	ldn psp
@@ -951,11 +913,11 @@ swapbytes:
 	sep nextpc
 
 ;C 2*      x1 -- x2         arithmetic left shift
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"2*"
-TWOSTAR:
+	DW link
+	DB 0
+link SET $
+	DB 2,"2*"
+TWOSTAR
 	ldn psp		; x lo
 	shl		; shift in zero
 	str psp
@@ -966,11 +928,11 @@ TWOSTAR:
 	sep nextpc
 
 ;C 2/      x1 -- x2        arithmetic right shift
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"2/"
-TWOSLASH:		; sign extension
+	DW link
+	DB 0
+link SET $
+	DB 2,"2/"
+TWOSLASH		; sign extension
 	inc psp
 	ldn psp		; x hi
 	shlc		; get msb to carry
@@ -983,15 +945,15 @@ TWOSLASH:		; sign extension
 	sep nextpc
 
 ;C LSHIFT  x1 u -- x2    logical L shift u places
-	.dw link
-	.db 0
-	.set link,*
-	.db 6,"LSHIFT"
-LSHIFT:
+	DW link
+	DB 0
+link SET $
+	DB 6,"LSHIFT"
+LSHIFT
 	lda psp		; u lo
 	plo temp1
 	inc psp		; ignore u hi
-lshloop:
+lshloop
 	bz shdone
 
 	ldn psp		; lo
@@ -1007,15 +969,15 @@ lshloop:
 	br lshloop
 
 ;C RSHIFT  x1 u -- x2    logical R shift u places
-	.dw link
-	.db 0
-	.set link,*
-	.db 6,"RSHIFT"
-RSHIFT:
+	DW link
+	DB 0
+link SET $
+	DB 6,"RSHIFT"
+RSHIFT
 	lda psp		; u lo
 	plo temp1
 	inc psp		; ignore u hi
-rshloop:
+rshloop
 	bz shdone
 
 	inc psp
@@ -1029,15 +991,15 @@ rshloop:
 	dec temp1	; count shifts
 	glo temp1
 	br rshloop
-shdone:
+shdone
 	sep nextpc
 
 ;C +!     n/u a-addr --       add cell to memory
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"+!"
-PLUSSTORE:
+	DW link
+	DB 0
+link SET $
+	DB 2,"+!"
+PLUSSTORE
 	lda psp		; a lo
 	plo temp1
 	lda psp		; a hi
@@ -1056,35 +1018,35 @@ PLUSSTORE:
 
 ; COMPARISON OPERATIONS =========================
 
-.page 	;Page align this section
+	PAGE 	;Page align this section
 
 ;C 0=     n/u -- flag    return true if TOS=0
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"0="
-ZEROEQUAL:
+	DW link
+	DB 0
+link SET $
+	DB 2,"0="
+ZEROEQUAL
 	lda psp
 	bnz xfalse
 	ldn psp
 	bnz xfalse
-xtrue:
-	ldi H'FF
+xtrue
+	ldi $FF
 	stxd
 	str psp
 	sep nextpc
-xfalse:
-	ldi H'0
+xfalse
+	ldi $0
 	stxd
 	str psp
 	sep nextpc
 
 ;C 0<     n -- flag      true if TOS negative
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"0<"
-ZEROLESS:
+	DW link
+	DB 0
+link SET $
+	DB 2,"0<"
+ZEROLESS
 	inc psp
 	ldn psp
 	shlc		; sign -> carry
@@ -1092,11 +1054,11 @@ ZEROLESS:
 	br xfalse
 
 ;C =      x1 x2 -- flag         test x1=x2
-	.dw link
-	.db 0
-	.set link,*
-	.db 1,"="
-EQUAL:
+	DW link
+	DB 0
+link SET $
+	DB 1,"="
+EQUAL
 	lda psp		; low byte x2
 	inc psp
 	sm		; low byte x1
@@ -1111,20 +1073,20 @@ EQUAL:
 	br xtrue
 
 ;X <>     x1 x2 -- flag    test not eq
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"<>"
-NOTEQUAL:
+	DW link
+	DB 0
+link SET $
+	DB 2,"<>"
+NOTEQUAL
 	sep colonpc
-	.dw EQUAL,ZEROEQUAL,EXIT
+	DW EQUAL,ZEROEQUAL,EXIT
 
 ;C <      n1 n2 -- flag        test n1<n2, signed
-	.dw link
-	.db 0
-	.set link,*
-	.db 1,"<"
-LESS:
+	DW link
+	DB 0
+link SET $
+	DB 1,"<"
+LESS
 	lda psp		; n2 lo
 	plo temp2
 	lda psp		; n2 hi
@@ -1134,12 +1096,12 @@ LESS:
 	shl
 	bdf less2	; different signs ->
 	ghi temp2	; n2
-less4:
+less4
 	sm		; n2 - n1 hi
 	bz less3	; same, go check lo
 	bdf xtrue
 	br xfalse
-less3:
+less3
 	dec psp		; point to n1 lo
 	glo temp2
 	sm
@@ -1147,27 +1109,27 @@ less3:
 	bz xfalse
 	bdf xtrue
 	br xfalse
-less2:			; here if signs are different
+less2			; here if signs are different
 	ghi temp2	; n2 hi
 	shl
 	bnf xtrue	; positive->
 	br xfalse
 
 ;C >     n1 n2 -- flag         test n1>n2, signed
-	.dw link
-	.db 0
-	.set link,*
-	.db 1,">"
-GREATER:
+	DW link
+	DB 0
+link SET $
+	DB 1,">"
+GREATER
 	sep colonpc
-	.dw SWAP,LESS,EXIT
+	DW SWAP,LESS,EXIT
 
 ;C U<    u1 u2 -- flag       test u1<u2, unsigned
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"U<"
-ULESS:
+	DW link
+	DB 0
+link SET $
+	DB 2,"U<"
+ULESS
 	lda psp		; u2 lo
 	plo temp2
 	lda psp		; u2 hi
@@ -1176,69 +1138,69 @@ ULESS:
 	br less4
 
 ;X U>    u1 u2 -- flag     u1>u2 unsgd
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"U>"
-UGREATER:
+	DW link
+	DB 0
+link SET $
+	DB 2,"U>"
+UGREATER
 	sep colonpc
-	.dw SWAP,ULESS,EXIT
+	DW SWAP,ULESS,EXIT
 
 ; COMMON CONSTANTS =========================
 
 ;Z -1	-- -1	
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"-1"
-MINUSONE:
+	DW link
+	DB 0
+link SET $
+	DB 2,"-1"
+MINUSONE
 	dec psp
 	lbr xtrue
 
 ;Z 0	-- 0
-	.dw link
-	.db 0
-	.set link,*
-	.db 1,"0"
-ZERO:
+	DW link
+	DB 0
+link SET $
+	DB 1,"0"
+ZERO
 	dec psp
 	lbr xfalse
 
 ;X FALSE	-- 0	
-	.dw link
-	.db 0
-	.set link,*
-	.db 5,"FALSE"
-FALSE:
+	DW link
+	DB 0
+link SET $
+	DB 5,"FALSE"
+FALSE
 	br ZERO
 
 ;X TRUE	-- -1	
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"TRUE"
-TRUE:
+	DW link
+	DB 0
+link SET $
+	DB 4,"TRUE"
+TRUE
 	br MINUSONE
 
 ;Z 1	-- 1	
-	.dw link
-	.db 0
-	.set link,*
-	.db 1,"1"
-ONE:
+	DW link
+	DB 0
+link SET $
+	DB 1,"1"
+ONE
 	sep constpc
-	.dw 1
+	DW 1
 
 ; LOOP AND BRANCH OPERATIONS ====================
 
-.page ; Page align these instructions
+	PAGE ; Page align these instructions
 
 ;Z branch   --                  branch always
-	.dw link
-	.db 0
-	.set link,*
-	.db 6,"branch"
-branch:
+	DW link
+	DB 0
+link SET $
+	DB 6,"branch"
+branch
 	lda ip		; dest hi
 	phi temp1
 	ldn ip		; dest lo
@@ -1248,11 +1210,11 @@ branch:
 	sep nextpc
 
 ;Z ?branch   x --              branch if TOS zero
-	.dw link
-	.db 0
-	.set link,*
-	.db 7,"?branch"
-qbranch:
+	DW link
+	DB 0
+link SET $
+	DB 7,"?branch"
+qbranch
 	lda psp		; TOS lo
 	or		; TOS hi
 	inc psp
@@ -1272,11 +1234,11 @@ qbranch:
 ; is slightly different.
 ; The limit itself is also stored for use by I.
 
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"(do)"
-xdo:
+	DW link
+	DB 0
+link SET $
+	DB 4,"(do)"
+xdo
 	lda psp		; index lo
 	plo temp1
 	lda psp		; index hi
@@ -1310,11 +1272,11 @@ xdo:
 ; clean up the return stack and skip the branch.
 ; Else take the inline branch.  Note that LOOP
 ; terminates when index=0.
-	.dw link
-	.db 0
-	.set link,*
-	.db 6,"(loop)"
-xloop:
+	DW link
+	DB 0
+link SET $
+	DB 6,"(loop)"
+xloop
 	sex rsp		; do arithmetic on return stack
 	inc rsp		; low byte of index
 	ldi 1
@@ -1332,11 +1294,11 @@ xloop:
 ; Add n to the loop index.  If loop terminates,
 ; clean up the return stack and skip the branch.
 ; Else take the inline branch.
-	.dw link
-	.db 0
-	.set link,*
-	.db 7,"(+loop)"
-xplusloop:
+	DW link
+	DB 0
+link SET $
+	DB 7,"(+loop)"
+xplusloop
 	lda psp		; increment lo
 	plo temp1
 	lda psp		; increment hi
@@ -1352,27 +1314,27 @@ xplusloop:
 	sex psp		; restore X
 		
 	ghi temp1	; 
-	ani H'80	; sign of increment
+	ani $80	; sign of increment
 	bz xloopup	; positive -> 
 			; counting down
 	bdf branch	; continue looping
 	br loopdone
 
-xloopup:		; counting up
+xloopup		; counting up
 	bnf branch	; continue looping
 
-loopdone:
+loopdone
 	inc ip		; ignore branch destination
 	inc ip
-	br unloop
+	br UNLOOP
 
 ;C I        -- n   R: sys1 sys2 -- sys1 sys2
 ;                   get the innermost loop index
-	.dw link
-	.db 0
-	.set link,*
-	.db 1,"I"
-II:
+	DW link
+	DB 0
+link SET $
+	DB 1,"I"
+II
 	lda rsp		; index hi
 	dec psp		; push to param stack
 	stxd
@@ -1390,11 +1352,11 @@ II:
 
 ;C J        -- n   R: 4*sys -- 4*sys
 ;                   get the second loop index
-	.dw link
-	.db 0
-	.set link,*
-	.db 1,"J"
-JJ:
+	DW link
+	DB 0
+link SET $
+	DB 1,"J"
+JJ
 	inc rsp		; skip outer loop params
 	inc rsp
 	inc rsp
@@ -1421,11 +1383,11 @@ JJ:
 	lbr PLUS	; add limit back to index
 
 ;C UNLOOP   --   R: sys1 sys2 --  drop loop parms
-	.dw link
-	.db 0
-	.set link,*
-	.db 6,"UNLOOP"
-UNLOOP:
+	DW link
+	DB 0
+link SET $
+	DB 6,"UNLOOP"
+UNLOOP
 	inc rsp		; drop loop params
 	inc rsp		; from return stack
 	inc rsp
@@ -1434,14 +1396,14 @@ UNLOOP:
 
 ; MULTIPLY AND DIVIDE ===========================
 
-.page ;Purify this code, oh holy page
+	PAGE ;Purify this code, oh holy page
 
 ;C UM*     u1 u2 -- ud   unsigned 16x16->32 mult.
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"UM*"
-UMSTAR:
+	DW link
+	DB 0
+link SET $
+	DB 3,"UM*"
+UMSTAR
 
 	lda psp		; u2 lo
 	plo temp2
@@ -1467,7 +1429,7 @@ UMSTAR:
 	plo temp4	; bit counter
 	inc psp
 	inc psp
-umloop:			; PSP points to byte[0] of result
+umloop			; PSP points to byte[0] of result
 			
 	ghi temp1	; shift u1 right
 	shr
@@ -1495,7 +1457,7 @@ umloop:			; PSP points to byte[0] of result
 	str psp		; restore PSP
 	inc psp
 
-um_noadd:		; shift multiplier left
+um_noadd		; shift multiplier left
 	glo temp2
 	shl
 	plo temp2
@@ -1519,11 +1481,11 @@ um_noadd:		; shift multiplier left
 	sep nextpc
 
 ;C UM/MOD   ud u1 -- u2 u3   unsigned 32/16->16
-	.dw link
-	.db 0
-	.set link,*
-	.db 6,"UM/MOD"
-UMSLASHMOD:
+	DW link
+	DB 0
+link SET $
+	DB 6,"UM/MOD"
+UMSLASHMOD
 	lda psp		; get divisor u1
 	plo temp1
 	lda psp
@@ -1542,7 +1504,7 @@ UMSLASHMOD:
 	plo temp4	; bit counter
 	inc psp
 
-ummodloop:		; PSP points to byte[3] of dividend
+ummodloop		; PSP points to byte[3] of dividend
 			; shift divisor right
 	ghi temp1
 	shr
@@ -1583,9 +1545,9 @@ ummodloop:		; PSP points to byte[3] of dividend
 	sd
 	bnf umm0	; doesn't go ->
 	br umd0		; goes ->
-umd3:
+umd3
 	inc psp
-umd0:
+umd0
 
 ; subtract divisor from dividend
 ; PSP pointing to byte[0] of dividend
@@ -1608,9 +1570,9 @@ umd0:
 	smi 0		; set carry
 	br umm3
 
-umm0:	dec psp
+umm0	dec psp
 
-umm3:			; PSP pointing to byte[3] of dividend
+umm3			; PSP pointing to byte[3] of dividend
 			; shift carry into quotient
 	glo temp3
 	shlc
@@ -1634,11 +1596,11 @@ umm3:			; PSP pointing to byte[3] of dividend
 ; BLOCK AND STRING OPERATIONS ===================
 
 ;C FILL   c-addr u char --  fill memory with char
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"FILL"
-FILL:
+	DW link
+	DB 0
+link SET $
+	DB 4,"FILL"
+FILL
 	lda psp
 	plo temp1	; char
 	inc psp
@@ -1651,18 +1613,18 @@ FILL:
 	lda psp
 	phi temp3	; dest hi
 
-fillloop:
+fillloop
 	glo temp2	; check for zero
 	bnz fillmore
 	ghi temp2
 	bz filldone	; done->
-fillmore:
+fillmore
 	glo temp1
 	str temp3	; dst byte
 	inc temp3
 	dec temp2	; count bytes
 	br fillloop
-filldone:
+filldone
 	sep nextpc
 
 ;S CMOVE   c-addr1 c-addr2 u --  move from bottom
@@ -1670,11 +1632,11 @@ filldone:
 ; On byte machines, CMOVE and CMOVE> are logical
 ; factors of MOVE.  They are easy to implement on
 ; CPUs which have a block-move instruction.
-	.dw link
-	.db 0
-	.set link,*
-	.db 5,"CMOVE"
-CMOVE:
+	DW link
+	DB 0
+link SET $
+	DB 5,"CMOVE"
+CMOVE
 	lda psp
 	plo temp1	; count lo
 	lda psp
@@ -1687,33 +1649,33 @@ CMOVE:
 	plo temp3	; src lo
 	lda psp
 	phi temp3	; src hi
-cmoveloop:
+cmoveloop
 	glo temp1	; check for zero
 	bnz cmovemore
 	ghi temp1
 	bz cmovedone	; done->
-cmovemore:
+cmovemore
 	lda temp3	; src byte
 	str temp2	; dest
 	inc temp2
 	dec temp1	; count bytes
 	br cmoveloop
-cmovedone:
+cmovedone
 	sep nextpc
 
 ;S CMOVE>  c-addr1 c-addr2 u --  move from top
 ; as defined in the ANSI optional String word set
-	.dw link
-	.db 0
-	.set link,*
-	.db 6,"CMOVE>"
-CMOVEUP:
+	DW link
+	DB 0
+link SET $
+	DB 6,"CMOVE>"
+CMOVEUP
 	sep colonpc
-	.dw TOR			; count to return stack
-	.dw RFETCH,PLUS		; end of dest + 1
-	.dw SWAP,RFETCH,PLUS	; end of src + 1
-	.dw RFROM		; count
-	.dw *+2
+	DW TOR			; count to return stack
+	DW RFETCH,PLUS		; end of dest + 1
+	DW SWAP,RFETCH,PLUS	; end of src + 1
+	DW RFROM		; count
+	DW $ + 2
 
 	lda psp
 	plo temp1	; count lo
@@ -1732,32 +1694,32 @@ CMOVEUP:
 	dec temp3	; end of dst
 	sex temp3	; so we can use stxd
 
-xcmoveloop:
+xcmoveloop
 	glo temp1	; check for zero
 	bnz xcmovemore
 	ghi temp1
 	bz xcmovedone	; done->
-xcmovemore:
+xcmovemore
 	ldn temp2	; src byte
 	dec temp2
 	stxd		; dest
 	dec temp1	; count bytes
 	br xcmoveloop
-xcmovedone:
+xcmovedone
 	sex psp		; restore X
 	lbr EXIT
 
-;Z SKIP   c-addr u c -- c-addr' u'
+;Z skip   c-addr u c -- c-addr' u'
 ;                           skip matching chars
-; Although SKIP, SCAN, and S= are perhaps not the
+; Although skip, scan, and S= are perhaps not the
 ; ideal factors of WORD and FIND, they closely
 ; follow the string operations available on many
 ; CPUs, and so are easy to implement and fast.
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"SKIP"
-skip:
+	DW link
+	DB 0
+link SET $
+	DB 4,"skip"
+skip
 	lda psp		; char lo
 	plo temp1
 	inc psp
@@ -1771,19 +1733,19 @@ skip:
 	phi temp3
 	sex temp3	; for comparisons
 
-skloop:			; is count zero?
+skloop			; is count zero?
 	glo temp2
 	bnz sk1
 	ghi temp2
 	bz skdone
-sk1:
+sk1
 	glo temp1	; get char
 	sm
 	bnz skdone	; not equal ->
 	inc temp3	; increment address
 	dec temp2	; decrement count
 	br skloop
-skdone:
+skdone
 	sex psp		; restore X
 	ghi temp3	; push pointer
 	stxd
@@ -1795,13 +1757,13 @@ skdone:
 	str psp
 	sep nextpc
 
-;Z SCAN    c-addr u c -- c-addr' u'
+;Z scan    c-addr u c -- c-addr' u'
 ;                       find matching char
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"SCAN"
-scan:
+	DW link
+	DB 0
+link SET $
+	DB 4,"scan"
+scan
 	lda psp		; char lo
 	plo temp1
 	inc psp
@@ -1815,12 +1777,12 @@ scan:
 	phi temp3
 	sex temp3	; for comparisons
 
-scloop:			; is count zero?
+scloop			; is count zero?
 	glo temp2
 	bnz sc1
 	ghi temp2
 	bz skdone
-sc1:
+sc1
 	glo temp1	; get char
 	sm
 	bz skdone	; equal ->
@@ -1830,11 +1792,11 @@ sc1:
 
 ;Z S=    c-addr1 c-addr2 u -- n   string compare
 ;              n<0: s1<s2, n=0: s1=s2, n>0: s1>s2
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"S="
-sequal:
+	DW link
+	DB 0
+link SET $
+	DB 2,"S="
+SEQUAL
 	lda psp		; count lo
 	plo temp3
 	lda psp		; count hi
@@ -1849,12 +1811,12 @@ sequal:
 	phi temp1
 	sex temp2	; for comparisons
 
-seqloop:
+seqloop
 	glo temp3	; is count zero?
 	bnz seq1
 	ghi temp3
 	bz seqdone
-seq1:
+seq1
 	lda temp1
 	sm		; subtract (addr1) - (addr2)
 	bnz seqdone	; not equal ->
@@ -1862,7 +1824,7 @@ seq1:
 	dec temp3
 	br seqloop
 
-seqdone:
+seqdone
 	sex psp		; restore X
 	stxd		; push result twice
 	str psp

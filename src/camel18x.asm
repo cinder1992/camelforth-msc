@@ -20,7 +20,7 @@
 ; ===============================================
 ; CAMEL18X.ASM: Additional High-Level Words
 ;   not included in the original CamelForth
-;   Source code is for the A180 assembler.
+;   Source code is for the A18 assembler.
 ;   Forth words are documented as follows:
 ;*   NAME     stack -- stack    description
 ; ===============================================
@@ -33,102 +33,102 @@
 ;  OVER >R    ( c addr u R: addr ) 
 ;  DUP >R    ( c addr u R: addr u ) 
 ;  ROT        ( addr u c ) 
-;  SCAN NIP DUP    ( u' u' ) 
+;  scan NIP DUP    ( u' u' ) 
 ;  R> SWAP -    ( u' len R: addr ) 
 ;  DUP ROT    ( len len u' ) 
 ;  IF CHAR+ THEN     ( skip trailing delim ) 
 ;  >IN +!    ( update >IN ) 
 ;  R> SWAP    ( addr len ) 
 ; 
-	.dw link
-	.db 0
-	.set link,*
-	.db 5,"PARSE"
-PARSE:
+	DW link
+	DB 0
+link SET $
+	DB 5,"PARSE"
+PARSE
 	sep colonpc
-	.dw SOURCE,TOIN,FETCH,SLASHSTRING
-	.dw OVER,TOR,DUP,TOR,ROT
-	.dw SCAN,NIP,DUP
-	.dw RFROM,SWAP,MINUS
-	.dw DUP,ROT,qbranch,PARSE1
-	.dw CHARPLUS
-PARSE1:
-	.dw TOIN,PLUSSTORE
-	.dw RFROM,SWAP,EXIT
+	DW SOURCE,TOIN,FETCH,SLASHSTRING
+	DW OVER,TOR,DUP,TOR,ROT
+	DW scan,NIP,DUP
+	DW RFROM,SWAP,MINUS
+	DW DUP,ROT,qbranch,PARSE1
+	DW CHARPLUS
+PARSE1
+	DW TOIN,PLUSSTORE
+	DW RFROM,SWAP,EXIT
 
 ;X .(	--			print to matching right paren
 ; [ HEX ] 29 PARSE TYPE ; IMMEDIATE
-	.dw link
-	.db 1
-	.set link,*
-	.db 2,".("
-DOTPAREN:
+	DW link
+	DB 1
+link SET $
+	DB 2,".("
+DOTPAREN
 	sep colonpc
-	.dw LIT,H'29,PARSE,TYPE,EXIT
+	DW LIT,$29,PARSE,TYPE,EXIT
 
 ;Z (C")     -- c-addr		run-time code for C"
 ;   R> DUP COUNT + ALIGNED >R  ;
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"(C\")"
-XCQUOTE:
+	DW link
+	DB 0
+link SET $
+	DB 4,"(C\")"
+XCQUOTE
 	sep colonpc
-	.dw RFROM,DUP,COUNT,PLUS,ALIGNED,TOR
-	.dw EXIT
+	DW RFROM,DUP,COUNT,PLUS,ALIGNED,TOR
+	DW EXIT
 
 ;X C"       --		compile in-line string
 ;  COMPILE (C") 
 ;  [CHAR] " PARSE    ( c-addr u ) 
 ;  CCSTR
 ; IMMEDIATE 
-	.dw link
-	.db 1
-	.set link,*
-	.db 2,"C\""
-CQUOTE:
+	DW link
+	DB 1
+link SET $
+	DB 2,"C\""
+CQUOTE
 	sep colonpc
-	.dw COMPILE,XCQUOTE
-	.dw LIT,H'22,PARSE
-	.dw CCSTR,EXIT
+	DW COMPILE,XCQUOTE
+	DW LIT,$22,PARSE
+	DW CCSTR,EXIT
 
 ;Z CCSTR  c-addr u -- compile to counted string
 ;  DUP >R        ( c-addr u ) 
 ;  HERE >COUNTED        ( copy to dict ) 
 ;  R> CHAR+ ALLOT ALIGN    ( bump DP ) 
-	.dw link
-	.db 0
-	.set link,*
-	.db 5,"CCSTR"
-CCSTR:
+	DW link
+	DB 0
+link SET $
+	DB 5,"CCSTR"
+CCSTR
 	sep colonpc
-	.dw DUP,TOR,HERE,TOCOUNTED
-	.dw RFROM,CHARPLUS
-	.dw ALLOT,ALIGN
-	.dw EXIT
+	DW DUP,TOR,HERE,TOCOUNTED
+	DW RFROM,CHARPLUS
+	DW ALLOT,ALIGN
+	DW EXIT
 
 ;S SLITERAL c-addr u --  compile time
 ;           -- c-addr u  run time
 ; COMPILE (S") CCSTR
 ; IMMEDIATE
-	.dw link
-	.db 1
-	.set link,*
-	.db 8,"SLITERAL"
-SLITERAL:
+	DW link
+	DB 1
+link SET $
+	DB 8,"SLITERAL"
+SLITERAL
 	sep colonpc
-	.dw COMPILE,XSQUOTE
-	.dw CCSTR,EXIT
+	DW COMPILE,XSQUOTE
+	DW CCSTR,EXIT
 
 ;X \	--			comment to end of line
 ; \ 0 PARSE 2DROP ; IMMEDIATE
-	.dw link
-	.db 1
-	.set link,*
-	.db 1,"\\"
-BACKSLASH:
+	DW link
+	DB 1
+link SET $
+	DB 1,"\\"
+BACKSLASH
 	sep colonpc
-	.dw ZERO,PARSE,TWODROP,EXIT
+	DW ZERO,PARSE,TWODROP,EXIT
 
 ;S -TRAILING ( c-addr u1 -- c-addr u2 )
 ;  BEGIN
@@ -137,19 +137,19 @@ BACKSLASH:
 ;    BL = 0= IF EXIT THEN
 ;    1-
 ;  AGAIN
-	.dw link
-	.db 0
-	.set link,*
-	.db 9,"-TRAILING"
-DTRAIL:
+	DW link
+	DB 0
+link SET $
+	DB 9,"-TRAILING"
+DTRAIL
 	sep colonpc
-DTRAIL1:
-	.dw DUP,ZEROEQUAL,qbranch,DTRAIL2,EXIT
-DTRAIL2:
-	.dw TWODUP,PLUS,ONEMINUS,CFETCH
-	.dw BL,EQUAL,ZEROEQUAL,qbranch,DTRAIL3,EXIT
-DTRAIL3:
-	.dw ONEMINUS,branch,DTRAIL1
+DTRAIL1
+	DW DUP,ZEROEQUAL,qbranch,DTRAIL2,EXIT
+DTRAIL2
+	DW TWODUP,PLUS,ONEMINUS,CFETCH
+	DW BL,EQUAL,ZEROEQUAL,qbranch,DTRAIL3,EXIT
+DTRAIL3
+	DW ONEMINUS,branch,DTRAIL1
 
 ;S COMPARE ( a1 u1 a2 u2 -- n )
 ;  ROT 2DUP  ( a1 a2 u2 u1 u2 u1 )
@@ -161,26 +161,26 @@ DTRAIL3:
 ;  DUP IF 
 ;    0< IF -1 ELSE 1 THEN
 ;  THEN
-	.dw link
-	.db 0
-	.set link,*
-	.db 7,"COMPARE"
-COMPARE:
+	DW link
+	DB 0
+link SET $
+	DB 7,"COMPARE"
+COMPARE
 	sep colonpc
-	.dw ROT,TWODUP
-	.dw SWAP,MINUS,TOR,UMIN
-	.dw SEQUAL,DUP
-	.dw qbranch,COMP1
-	.dw RFROM,DROP,branch,COMP2
-COMP1:
-	.dw DROP,RFROM
-COMP2:
-	.dw DUP,qbranch,COMP3
-	.dw ZEROLESS,qbranch,COMP4
-	.dw MINUSONE,branch,COMP3
-COMP4:
-	.dw ONE
-COMP3:	.dw EXIT
+	DW ROT,TWODUP
+	DW SWAP,MINUS,TOR,UMIN
+	DW SEQUAL,DUP
+	DW qbranch,COMP1
+	DW RFROM,DROP,branch,COMP2
+COMP1
+	DW DROP,RFROM
+COMP2
+	DW DUP,qbranch,COMP3
+	DW ZEROLESS,qbranch,COMP4
+	DW MINUSONE,branch,COMP3
+COMP4
+	DW ONE
+COMP3	DW EXIT
 
 ;S SEARCH          ( c-addr1 u1 c-addr2 u2 )
 ;  2OVER 2>R       ( c-addr1 u1 c-addr2 u2 R: c-addr1 u1 )
@@ -202,41 +202,41 @@ COMP3:	.dw EXIT
 ;    1 /STRING     ( c-addr1' u1' ) 
 ;    2R@           ( c-addr1' u1' c-addr2 u2 )  
 ;  AGAIN
-	.dw link
-	.db 0
-	.set link,*
-	.db 6,"SEARCH"
-SEARCH:
+	DW link
+	DB 0
+link SET $
+	DB 6,"SEARCH"
+SEARCH
 	sep colonpc
-	.dw TWOOVER,TWOTOR,TWODUP,TWOTOR
-SEAR1:	.dw LIT,2,PICK,OVER,ULESS,QBRANCH,SEAR2
-	.dw TWODROP,TWODROP,TWORFROM,TWODROP,TWORFROM 
-	.dw FALSE,EXIT 
-SEAR2:	.dw LIT,3,PICK,SWAP,SEQUAL,ZEROEQUAL,QBRANCH,SEAR3
-	.dw TWORFROM,TWODROP,TWORFROM,TWODROP
-	.dw TRUE,EXIT
-SEAR3:	.dw ONE,SLASHSTRING
-	.dw TWORFETCH,BRANCH,SEAR1
+	DW TWOOVER,TWOTOR,TWODUP,TWOTOR
+SEAR1	DW LIT,2,PICK,OVER,ULESS,qbranch,SEAR2
+	DW TWODROP,TWODROP,TWORFROM,TWODROP,TWORFROM 
+	DW FALSE,EXIT 
+SEAR2	DW LIT,3,PICK,SWAP,SEQUAL,ZEROEQUAL,qbranch,SEAR3
+	DW TWORFROM,TWODROP,TWORFROM,TWODROP
+	DW TRUE,EXIT
+SEAR3	DW ONE,SLASHSTRING
+	DW TWORFETCH,branch,SEAR1
 
 ;S BLANK addr --  fill memory with space characters
 ; BL FILL
-		.dw link
-	.db 0
-	.set link,*
-	.db 5,"BLANK"
-BLANK:
+		DW link
+	DB 0
+link SET $
+	DB 5,"BLANK"
+BLANK
 	sep colonpc
-	.dw BL,FILL,EXIT
+	DW BL,FILL,EXIT
 
 ;X ERASE addr --  fill memory with zeroes
 ; ZERO FILL
-	.dw link
-	.db 0
-	.set link,*
-	.db 5,"ERASE"
-ERASE:
+	DW link
+	DB 0
+link SET $
+	DB 5,"ERASE"
+ERASE
 	sep colonpc
-	.dw ZERO,FILL,EXIT
+	DW ZERO,FILL,EXIT
 
 ; PRINTING WORDS =========================================
 
@@ -249,74 +249,74 @@ ERASE:
 ;  ELSE
 ;    DROP
 ;  THEN TYPE
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"S.RJ"
-SDOTRJ:
+	DW link
+	DB 0
+link SET $
+	DB 4,"S.RJ"
+SDOTRJ
 	sep colonpc
-	.dw ROT,OVER,MINUS
-	.dw DUP,ZEROGREATER,QBRANCH,SDRJ1
-	.dw ZERO,XDO
-SDRJ2:	.dw BL,HOLD,MINUSONE,SLASHSTRING
-	.dw XLOOP,SDRJ2,BRANCH,SDRJ3
-SDRJ1:	.dw DROP
-SDRJ3:	.dw TYPE,EXIT
+	DW ROT,OVER,MINUS
+	DW DUP,ZEROGREATER,qbranch,SDRJ1
+	DW ZERO,xdo
+SDRJ2	DW BL,HOLD,MINUSONE,SLASHSTRING
+	DW xloop,SDRJ2,branch,SDRJ3
+SDRJ1	DW DROP
+SDRJ3	DW TYPE,EXIT
 
 ;X U.R  ( u width --  print unsigned right justified )  
 ;  SWAP 
 ;  <# 0 #S #>  ( width addr u )
 ;  S.RJ
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"U.R"
-UDOTR:
+	DW link
+	DB 0
+link SET $
+	DB 3,"U.R"
+UDOTR
 	sep colonpc
-	.dw SWAP,LESSNUM,ZERO,NUMS,NUMGREATER
-	.dw SDOTRJ,EXIT
+	DW SWAP,LESSNUM,ZERO,NUMS,NUMGREATER
+	DW SDOTRJ,EXIT
 
 ;X .R  ( n width -- print signed right justified)
 ;  SWAP  ( w n )
 ;  <# DUP ABS 0 #S ROT SIGN #> ( w addr u )
 ;  S.RJ
 ;
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,".R"
-DOTR:
+	DW link
+	DB 0
+link SET $
+	DB 2,".R"
+DOTR
 	sep colonpc
-	.dw SWAP,LESSNUM,DUP,ABS,ZERO
-	.dw NUMS,ROT,SIGN,NUMGREATER
-	.dw SDOTRJ,EXIT
+	DW SWAP,LESSNUM,DUP,ABS,ZERO
+	DW NUMS,ROT,SIGN,NUMGREATER
+	DW SDOTRJ,EXIT
 
 ;Z .BYTE ( u -- print byte in hex )
 ;  DUP 4 RSHIFT [ HEX ] 0F AND >DIGIT EMIT
 ;  0F AND >DIGIT EMIT
 ;
-	.dw link
-	.db 0
-	.set link,*
-	.db 5,".BYTE"
-DOTBYTE:
+	DW link
+	DB 0
+link SET $
+	DB 5,".BYTE"
+DOTBYTE
 	sep colonpc
-	.dw DUP,LIT,4,RSHIFT
-	.dw LIT,H'0F,ANDD,TODIGIT,EMIT
-	.dw LIT,H'0F,ANDD,TODIGIT,EMIT
-	.dw EXIT
+	DW DUP,LIT,4,RSHIFT
+	DW LIT,$0F,ANDD,TODIGIT,EMIT
+	DW LIT,$0F,ANDD,TODIGIT,EMIT
+	DW EXIT
 
 ;Z .ADDR ( u --  print address in hex )  
 ;  DUP >< .BYTE .BYTE 
 ;
-	.dw link
-	.db 0
-	.set link,*
-	.db 5,".ADDR"
-DOTADDR:
+	DW link
+	DB 0
+link SET $
+	DB 5,".ADDR"
+DOTADDR
 	sep colonpc
-	.dw DUP,SWAPBYTES,DOTBYTE
-	.dw DOTBYTE,EXIT
+	DW DUP,swapbytes,DOTBYTE
+	DW DOTBYTE,EXIT
 
 ;T DUMP ( addr u -- )  print memory contents
 ;  OVER .ADDR  ( print starting address )
@@ -329,79 +329,79 @@ DOTADDR:
 ;    THEN SWAP  ( addr' u' )
 ;  REPEAT
 ;  DROP
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"DUMP"
-DUMP:
+	DW link
+	DB 0
+link SET $
+	DB 4,"DUMP"
+DUMP
 	sep colonpc
-	.dw OVER,DOTADDR
-DUMP1:	.dw QDUP,QBRANCH,DUMP2
-	.dw OVER,CFETCH,SPACE,DOTBYTE
-	.dw ONEMINUS,SWAP,ONEPLUS
-	.dw DUP,LIT,H'0F,ANDD
-	.dw ZEROEQUAL,QBRANCH,DUMP3
-	.dw CR,DUP,DOTADDR
-DUMP3:	.dw SWAP,BRANCH,DUMP1
-DUMP2:	.dw DROP,EXIT
+	DW OVER,DOTADDR
+DUMP1	DW QDUP,qbranch,DUMP2
+	DW OVER,CFETCH,SPACE,DOTBYTE
+	DW ONEMINUS,SWAP,ONEPLUS
+	DW DUP,LIT,$0F,ANDD
+	DW ZEROEQUAL,qbranch,DUMP3
+	DW CR,DUP,DOTADDR
+DUMP3	DW SWAP,branch,DUMP1
+DUMP2	DW DROP,EXIT
 
 ; DEFINING WORDS ===========================================
 
 ;X :NONAME	-- xt	begin a nameless colon definition
-; LATEST @ , 0 C,	link & immed field (in case of RECURSE)
+; LATEST @ , 0 C,link & immed field (in case of RECURSE)
 ; HERE LATEST !
 ; 0 C,			null name field
 ; HERE ] COMPILE docolon;
-	.dw link
-	.db 0
-	.set link,*
-	.db 7,":NONAME"
-NONAME:
+	DW link
+	DB 0
+link SET $
+	DB 7,":NONAME"
+NONAME
 	sep colonpc
-	.dw LATEST,FETCH,COMMA,ZERO,CCOMMA
-	.dw HERE,LATEST,STORE
-	.dw ZERO,CCOMMA
-	.dw HERE,RIGHTBRACKET
-	.dw CFCOMPILE
+	DW LATEST,FETCH,COMMA,ZERO,CCOMMA
+	DW HERE,LATEST,STORE
+	DW ZERO,CCOMMA
+	DW HERE,RIGHTBRACKET
+	DW CFCOMPILE
 	sep colonpc
-	.dw EXIT
+	DW EXIT
 
 ;X VALUE	n --	create value object
 ; VALUE CONSTANT ;
-	.dw link
-	.db 0
-	.set link,*
-	.db 5,"VALUE"
-VALUE:
+	DW link
+	DB 0
+link SET $
+	DB 5,"VALUE"
+VALUE
 	lbr CONSTANT
 
 ;Z CFCOMPILE     --       append a 1-byte code field
 ; It takes a 1-byte inline literal opcode and appends it
 ; to the dictionary
-	.dw link
-	.db 0
-	.set link,*
-	.db 9,"CFCOMPILE"
-CFCOMPILE:
+	DW link
+	DB 0
+link SET $
+	DB 9,"CFCOMPILE"
+CFCOMPILE
 	sep colonpc
-	.dw RFROM,DUP,ONEPLUS,TOR
-	.dw CFETCH,CCOMMA,EXIT
+	DW RFROM,DUP,ONEPLUS,TOR
+	DW CFETCH,CCOMMA,EXIT
 
 ;Z FINDWORD	 ( "ccc" -- xt f  1 = immediate, -1 = regular)
 ; BL WORD FIND
 ; ?DUP IF EXIT THEN
 ; COUNT TYPE [CHAR] ? EMIT ABORT
-	.dw link
-	.db 0
-	.set link,*
-	.db 8,"FINDWORD"
-FINDWORD:
+	DW link
+	DB 0
+link SET $
+	DB 8,"FINDWORD"
+FINDWORD
 	sep colonpc
-	.dw BL,WORD,FIND
-	.dw QDUP,qbranch,FW1
-	.dw EXIT
-FW1:	.dw COUNT,TYPE
-	.dw LIT,H'3F,EMIT,CR,ABORT
+	DW BL,FWORD,FIND
+	DW QDUP,qbranch,FW1
+	DW EXIT
+FW1	DW COUNT,TYPE
+	DW LIT,$3F,EMIT,CR,ABORT
 
 ;X TO		n --	store in value object
 ; ' 1+		( skip code field )
@@ -410,96 +410,96 @@ FW1:	.dw COUNT,TYPE
 ; ELSE
 ;   !
 ; THEN ; IMMEDIATE
-	.dw link
-	.db 1
-	.set link,*
-	.db 2,"TO"
-TO:
+	DW link
+	DB 1
+link SET $
+	DB 2,"TO"
+TO
 	sep colonpc
-	.dw TICK,ONEPLUS
-	.dw STATE,FETCH,qbranch,TO1
-	.dw COMPILE,LIT		; compiling
-	.dw COMMA
-	.dw COMPILE
-TO1:				; interpreting
-	.dw STORE,EXIT
+	DW TICK,ONEPLUS
+	DW STATE,FETCH,qbranch,TO1
+	DW COMPILE,LIT		; compiling
+	DW COMMA
+	DW COMPILE
+TO1				; interpreting
+	DW STORE,EXIT
 
 ;X [COMPILE] Compilation: ( "<spaces>name" -- )
 ;  FINDWORD  ( -- xt f )
 ;  DROP  COMPILE,	( append semantics )
 ; IMMEDIATE
-	.dw link
-	.db 1
-	.set link,*
-	.db 9,"[COMPILE]"
-BRACCOMP:
+	DW link
+	DB 1
+link SET $
+	DB 9,"[COMPILE]"
+BRACCOMP
 	sep colonpc
-	.dw FINDWORD,DROP
-	.dw COMMAXT,EXIT
+	DW FINDWORD,DROP
+	DW COMMAXT,EXIT
 
 ;Z CREATE1   --		create an empty definition with 1-byte code field
 ;   (CREATE) CFCOMPILE dovar
-	.dw link
-	.db 0
-	.set link,*
-	.db 7,"CREATE1"
-CREATE1:
+	DW link
+	DB 0
+link SET $
+	DB 7,"CREATE1"
+CREATE1
 	sep colonpc
-	.dw XCREATE,CFCOMPILE
+	DW XCREATE,CFCOMPILE
 	sep varpc
-	.dw EXIT
+	DW EXIT
 
 ;X CONVERT ud1 c-addr2 -- ud2 c-addr2
 ; CHAR+ -1 >NUMBER DROP ;
-	.dw link
-	.db 0
-	.set link,*
-	.db 7,"CONVERT"
-CONVERT:
+	DW link
+	DB 0
+link SET $
+	DB 7,"CONVERT"
+CONVERT
 	sep colonpc
-	.dw CHARPLUS,MINUSONE,TONUMBER
-	.dw DROP,EXIT
+	DW CHARPLUS,MINUSONE,TONUMBER
+	DW DROP,EXIT
 
 ;X MARKER  ( "<spaces>name" -- create marker for forgetting
 ;  CREATE LATEST @ NFA>LFA , 
 ;  DOES> @ DUP DP ! 
 ;   @ LATEST !
 ;
-	.dw link
-	.db 0
-	.set link,*
-	.db 6,"MARKER"
-MARKER:
+	DW link
+	DB 0
+link SET $
+	DB 6,"MARKER"
+MARKER
 	sep colonpc
-	.dw XCREATE,CFCOMPILE
+	DW XCREATE,CFCOMPILE
 	sep createpc
-	.dw COMPILE,MARK1
-	.dw LATEST,FETCH,NFATOLFA,COMMA
-	.dw EXIT
-MARK1:	sep colonpc
-	.dw FETCH,DUP,DP,STORE
-	.dw FETCH,LATEST,STORE
-	.dw EXIT
+	DW COMPILE,MARK1
+	DW LATEST,FETCH,NFATOLFA,COMMA
+	DW EXIT
+MARK1	sep colonpc
+	DW FETCH,DUP,DP,STORE
+	DW FETCH,LATEST,STORE
+	DW EXIT
 
 ; MISCELLANEOUS WORDS =============================
 
 ;X UNUSED  ( -- u get size of unused dictionary )
 ;  SP@ HERE -   ( Param stack grows towards dictionary )
 ;
-	.dw link
-	.db 0
-	.set link,*
-	.db 6,"UNUSED"
-UNUSED:
+	DW link
+	DB 0
+link SET $
+	DB 6,"UNUSED"
+UNUSED
 	sep colonpc
-	.dw SPFETCH,HERE,MINUS,EXIT
+	DW SPFETCH,HERE,MINUS,EXIT
 
 ;X 0<>     n/u -- flag    return true if TOS<>0
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"0<>"
-ZERONOTEQ:
+	DW link
+	DB 0
+link SET $
+	DB 3,"0<>"
+ZERONOTEQ
 	lda psp
 	or
 	inc psp
@@ -507,13 +507,13 @@ ZERONOTEQ:
 	lbr FALSE
 
 ;X 0>     n/u -- flag    return true if TOS>0
-	.dw link
-	.db 0
-	.set link,*
-	.db 2,"0>"
-ZEROGREATER:
+	DW link
+	DB 0
+link SET $
+	DB 2,"0>"
+ZEROGREATER
 	sep colonpc
-	.dw ZERO,SWAP,LESS,EXIT
+	DW ZERO,SWAP,LESS,EXIT
 
 ; CONTROL FLOW WORDS ===================================
 
@@ -524,51 +524,51 @@ ZEROGREATER:
 ;    ['] 2DROP COMPILE, 
 ;  POSTPONE ELSE   ( fwd branch )
 ;  BEGINLOOP ; IMMEDIATE
-	.dw link
-	.db 1
-        .set link,*
-	.db 3,"?DO"
-QDO:
+	DW link
+	DB 1
+link SET $
+	DB 3,"?DO"
+QDO
 	sep colonpc
-	.dw COMPILE,TWODUP
-	.dw COMPILE,EQUAL
-	.dw IF,COMPILE,TWODROP
-	.dw ELSE,BEGINLOOP,EXIT
+	DW COMPILE,TWODUP
+	DW COMPILE,EQUAL
+	DW IF,COMPILE,TWODROP
+	DW ELSE,BEGINLOOP,EXIT
 
 ;Z BEGINLOOP	 ( common factor of DO and ?DO )
 ;  ['] (do) COMPILE,         ( compile runtime action )
 ;  HERE             ( bwd branch target )
 ;  0 >L                ( marker for LEAVEs )
-	.dw link
-	.db 0
-	.set link,*
-	.db 9,"BEGINLOOP"
-BEGINLOOP:
+	DW link
+	DB 0
+link SET $
+	DB 9,"BEGINLOOP"
+BEGINLOOP
 	sep colonpc
-	.dw COMPILE,xdo
-	.dw HERE	; target for bwd branch
-	.dw ZERO,TOL,EXIT
+	DW COMPILE,xdo
+	DW HERE	; target for bwd branch
+	DW ZERO,TOL,EXIT
 
 ;T AHEAD
 ;   ['] branch ,BRANCH HERE DUP ,DEST ; IMMEDIATE
-	.dw link
-	.db 1
-	.set link,*
-	.db 5,"AHEAD"
-AHEAD:         			; -- adrs
+	DW link
+	DB 1
+link SET $
+	DB 5,"AHEAD"
+AHEAD         			; -- adrs
 	sep colonpc
-	.dw LIT,branch,COMMABRANCH
-	.dw HERE,DUP,COMMADEST,EXIT
+	DW LIT,branch,COMMABRANCH
+	DW HERE,DUP,COMMADEST,EXIT
 
 ;X CASE
 ; 0 CONSTANT CASE IMMEDIATE
-	.dw link
-	.db 1
-	.set link,*
-	.db 4,"CASE"
-CASE:
+	DW link
+	DB 1
+link SET $
+	DB 4,"CASE"
+CASE
 	sep constpc
-	.dw 0
+	DW 0
 
 ;X OF  ( #of -- orig #of+1 / x -- )
 ;    1+    ( count OFs )
@@ -579,14 +579,14 @@ CASE:
 ;    POSTPONE DROP  ( discards case value if = )
 ;    R>             ( we can bring count back now )
 ; IMMEDIATE
-	.dw link
-	.db 1
-	.set link,*
-	.db 2,"OF"
-OF:
+	DW link
+	DB 1
+link SET $
+	DB 2,"OF"
+OF
 	sep colonpc
-	.dw ONEPLUS,TOR,COMPILE,OVER,COMPILE,EQUAL
-	.dw IF,COMPILE,DROP,RFROM,EXIT
+	DW ONEPLUS,TOR,COMPILE,OVER,COMPILE,EQUAL
+	DW IF,COMPILE,DROP,RFROM,EXIT
 
 ;X ENDOF ( orig1 #of -- orig2 #of )
 ;    >R   ( move off the stack in case the control-flow )
@@ -594,13 +594,13 @@ OF:
 ;    POSTPONE ELSE
 ;    R>   ( we can bring count back now )
 ; IMMEDIATE
-	.dw link
-	.db 1
-	.set link,*
-	.db 5,"ENDOF"
-ENDOF:
+	DW link
+	DB 1
+link SET $
+	DB 5,"ENDOF"
+ENDOF
 	sep colonpc
-	.dw TOR,ELSE,RFROM,EXIT
+	DW TOR,ELSE,RFROM,EXIT
 
 ;X ENDCASE  ( orig1..orign #of -- )
 ;    POSTPONE DROP  ( discard case value )
@@ -610,29 +610,29 @@ ENDOF:
 ;       LOOP
 ;    THEN
 ; IMMEDIATE
-	.dw link
-	.db 1
-	.set link,*
-	.db 7,"ENDCASE"
-ENDCASE:
+	DW link
+	DB 1
+link SET $
+	DB 7,"ENDCASE"
+ENDCASE
 	sep colonpc
-	.dw COMPILE,DROP,QDUP,qbranch,ENDC1
-	.dw ZERO,xdo
-ENDC2:	.dw THEN,xloop,ENDC2
-ENDC1:	.dw EXIT
+	DW COMPILE,DROP,QDUP,qbranch,ENDC1
+	DW ZERO,xdo
+ENDC2	DW THEN,xloop,ENDC2
+ENDC1	DW EXIT
 
 ; INPUT SOURCE WORDS ===================================
 
 ;X SOURCE-ID  ( -- flag )
 ; 'SOURCE CELL+ @ TIB = 0=	; compare current source 
-	.dw link		; to Terminal Input Buffer
-	.db 0
-	.set link,*
-	.db 9,"SOURCE-ID"
-SOURCEID:
+	DW link		; to Terminal Input Buffer
+	DB 0
+link SET $
+	DB 9,"SOURCE-ID"
+SOURCEID
 	sep colonpc
-	.dw TICKSOURCE,CELLPLUS,FETCH,TIB
-	.dw EQUAL,ZEROEQUAL,EXIT
+	DW TICKSOURCE,CELLPLUS,FETCH,TIB
+	DW EQUAL,ZEROEQUAL,EXIT
 
 ;X REFILL		( -- flag )
 ; SOURCE-ID IF  ( string source )
@@ -642,17 +642,17 @@ SOURCEID:
 ;   'SOURCE !  ( save char count )
 ;   0 >IN ! TRUE
 ; THEN
-	.dw link
-	.db 0
-	.set link,*
-	.db 6,"REFILL"
-REFILL:
+	DW link
+	DB 0
+link SET $
+	DB 6,"REFILL"
+REFILL
 	sep colonpc
-	.dw SOURCEID,QBRANCH,REF1
-	.dw FALSE,EXIT
-REF1:
-	.dw TIB,TIBSIZE,ACCEPT,TICKSOURCE,STORE
-	.dw ZERO,TOIN,STORE,TRUE,EXIT
+	DW SOURCEID,qbranch,REF1
+	DW FALSE,EXIT
+REF1
+	DW TIB,TIBSIZE,ACCEPT,TICKSOURCE,STORE
+	DW ZERO,TOIN,STORE,TRUE,EXIT
 
 ;T [ELSE]  ( -- )
 ;    1 BEGIN                               \ level
@@ -675,163 +675,153 @@ REF1:
 ;    REFILL 0= UNTIL                       \ level
 ;    DROP
 ;  IMMEDIATE
-	.dw link
-	.db 1
-	.set link,*
-	.db 6,"[ELSE]"
-BRACELSE:
+	DW link
+	DB 1
+link SET $
+	DB 6,"[ELSE]"
+BRACELSE
 	sep colonpc
-	.dw ONE
-BREL1:	.dw BL,WORD,COUNT,DUP,QBRANCH,BREL6
-	.dw TWODUP,XSQUOTE
-	.db 4,"[IF]"
-        .dw COMPARE,ZEROEQUAL,QBRANCH,BREL2
-	.dw TWODROP,ONEPLUS
-	.dw BRANCH,BREL3
-BREL2:	.dw TWODUP,XSQUOTE
-	.db 6,"[ELSE]"
-        .dw COMPARE,ZEROEQUAL,QBRANCH,BREL4
-        .dw TWODROP,ONEMINUS,DUP,QBRANCH,BREL3
-        .dw ONEPLUS,BRANCH,BREL3
-BREL4:	.dw XSQUOTE
-	.db 6,"[THEN]"
-        .dw COMPARE,ZEROEQUAL,QBRANCH,BREL3
- 	.dw ONEMINUS
-BREL3:	.dw QDUP,ZEROEQUAL,QBRANCH,BREL5
-	.dw EXIT
-BREL5:	.dw BRANCH,BREL1
-BREL6:	.dw TWODROP,REFILL,ZEROEQUAL,QBRANCH,BREL1
-        .dw DROP,EXIT
+	DW ONE
+BREL1	DW BL,FWORD,COUNT,DUP,qbranch,BREL6
+	DW TWODUP,XSQUOTE
+	DB 4,"[IF]"
+        DW COMPARE,ZEROEQUAL,qbranch,BREL2
+	DW TWODROP,ONEPLUS
+	DW branch,BREL3
+BREL2	DW TWODUP,XSQUOTE
+	DB 6,"[ELSE]"
+        DW COMPARE,ZEROEQUAL,qbranch,BREL4
+        DW TWODROP,ONEMINUS,DUP,qbranch,BREL3
+        DW ONEPLUS,branch,BREL3
+BREL4	DW XSQUOTE
+	DB 6,"[THEN]"
+        DW COMPARE,ZEROEQUAL,qbranch,BREL3
+ 	DW ONEMINUS
+BREL3	DW QDUP,ZEROEQUAL,qbranch,BREL5
+	DW EXIT
+BREL5	DW branch,BREL1
+BREL6	DW TWODROP,REFILL,ZEROEQUAL,qbranch,BREL1
+        DW DROP,EXIT
 
 ;T [IF]  ( flag -- )
 ; 0= IF POSTPONE [ELSE] THEN ;  IMMEDIATE
-	.dw link
-	.db 1
-	.set link,*
-	.db 4,"[IF]"
-BRACIF:
+	DW link
+	DB 1
+link SET $
+	DB 4,"[IF]"
+BRACIF
 	sep colonpc
- 	.dw ZEROEQUAL,QBRANCH,BRIF1
-	.dw BRACELSE
-BRIF1:	.dw EXIT
+ 	DW ZEROEQUAL,qbranch,BRIF1
+	DW BRACELSE
+BRIF1	DW EXIT
 
 ;T [THEN]  ( -- )  ;  IMMEDIATE
-	.dw link
-	.db 1
-	.set link,*
-	.db 6,"[THEN]"
-BRACTHEN:
+	DW link
+	DB 1
+link SET $
+	DB 6,"[THEN]"
+BRACTHEN
 	sep nextpc
 
 ;X SAVE-INPUT	( -- save-spec n )
 ; >IN @ 1	( for keyboard and EVALUATE )
-	.dw link
-	.db 0
-	.set link,*
-	.db 10,"SAVE-INPUT"
-SAVEIN:
+	DW link
+	DB 0
+link SET $
+	DB 10,"SAVE-INPUT"
+SAVEIN
 	sep colonpc
-	.dw TOIN,FETCH,ONE,EXIT
+	DW TOIN,FETCH,ONE,EXIT
 
 ;X RESTORE-INPUT ( save-spec n -- f )
 ; 1 = IF >IN ! FALSE ELSE TRUE THEN
-	.dw link
-	.db 0
-	.set link,*
-	.db 13,"RESTORE-INPUT"
-RESTIN:
+	DW link
+	DB 0
+link SET $
+	DB 13,"RESTORE-INPUT"
+RESTIN
 	sep colonpc
-	.dw ONE,EQUAL,QBRANCH,REST1
-	.dw TOIN,STORE
-	.dw FALSE,EXIT
-REST1:	.dw TRUE,EXIT
+	DW ONE,EQUAL,qbranch,REST1
+	DW TOIN,STORE
+	DW FALSE,EXIT
+REST1:	DW TRUE,EXIT
 
 ; STACK MANIPULATION WORDS =======================
 
 ;X 2>R	 x y --  R: -- x y	move two to return stack
 ; R> ROT >R SWAP >R >R
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"2>R"
-TWOTOR:
+	DW link
+	DB 0
+link SET $
+	DB 3,"2>R"
+TWOTOR
 	sep colonpc
-	.dw RFROM,ROT,TOR
-	.dw SWAP,TOR,TOR
-	.dw EXIT
+	DW RFROM,ROT,TOR
+	DW SWAP,TOR,TOR
+	DW EXIT
 
 ;X 2R>	-- x y R: x y --	move two from return stack
 ; R> R> R> ROT >R SWAP
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"2R>"
-TWORFROM:
+	DW link
+	DB 0
+link SET $
+	DB 3,"2R>"
+TWORFROM
 	sep colonpc
-	.dw RFROM,RFROM,RFROM
-	.dw ROT,TOR,SWAP
-	.dw EXIT
+	DW RFROM,RFROM,RFROM
+	DW ROT,TOR,SWAP
+	DW EXIT
 
 ;X 2R@  -- x y			copy two from return stack
 ; R> 2R> 2DUP 2>R ROT >R 
-	.dw link
-	.db 0
-	.set link,*
-	.db 3,"2R@"
-TWORFETCH:
+	DW link
+	DB 0
+link SET $
+	DB 3,"2R@"
+TWORFETCH
 	sep colonpc
-	.dw RFROM,TWORFROM,TWODUP
-	.dw TWOTOR,ROT,TOR,EXIT	
+	DW RFROM,TWORFROM,TWODUP
+	DW TWOTOR,ROT,TOR,EXIT	
 
 ;T CS-PICK		control stack PICK
-	.dw link
-	.db 0
-	.set link,*
-	.db 7,"CS-PICK"
-CSPICK:
+	DW link
+	DB 0
+link SET $
+	DB 7,"CS-PICK"
+CSPICK
 	br PICK		; same as data stack PICK
 
 ;X PICK n -- x		pick n'th entry from stack
 ; CELLS SP@ + CELL+ @ >< ;	data stack is little-endian
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"PICK"
-PICK:
+	DW link
+	DB 0
+link SET $
+	DB 4,"PICK"
+PICK
 	sep colonpc
-	.dw CELLS,SPFETCH,PLUS
-	.dw CELLPLUS,FETCH,SWAPBYTES
-	.dw EXIT
+	DW CELLS,SPFETCH,PLUS
+	DW CELLPLUS,FETCH,swapbytes
+	DW EXIT
 
 ;T CS-ROLL		control stack ROLL
-	.dw link
-	.db 0
-	.set link,*
-	.db 7,"CS-ROLL"
-CSROLL:
+	DW link
+	DB 0
+link SET $
+	DB 7,"CS-ROLL"
+CSROLL
 	br ROLL		; same as data stack ROLL
 
 ;X ROLL	( xu xu-1 ... x0 u -- xu-1 ... x0 xu )
 ;  DUP >R PICK		 get entry to be rolled
 ;  SP@ DUP CELL+	 get src and dest of move
 ;  R> CELLS CELL+ CMOVE> DROP
-	.dw link
-	.db 0
-	.set link,*
-	.db 4,"ROLL"
-ROLL:
+	DW link
+	DB 0
+link SET $
+	DB 4,"ROLL"
+ROLL
 	sep colonpc
-	.dw DUP,TOR,PICK
-	.dw SPFETCH,DUP,CELLPLUS
-	.dw RFROM,CELLS,CELLPLUS
-	.dw CMOVEUP,DROP,EXIT
-
-; EPILOGUE =========================
-
-	.equ lastword,link	; nfa of last word in dictionary
-	.equ enddict,*		; user's code starts here
-
-	.end
-
-
-
+	DW DUP,TOR,PICK
+	DW SPFETCH,DUP,CELLPLUS
+	DW RFROM,CELLS,CELLPLUS
+	DW CMOVEUP,DROP,EXIT
