@@ -71,8 +71,8 @@ your terminal might be sending a different code for backspace than CamelForth ex
 ## TODO
 
  - [X] ~~Port to the modern A18 assembler, PseudoSam is ancient, doesn't support macros, and has a few bugs of its own.~~
- - [X] ~~Update `GENBAUD`, `EMIT`, and `KEY` to use a USER variable rather than requiring a whole register~~
  - [X] ~~Implement a way to build for use in ROM~~
+ - [ ] Update `GENBAUD`, `EMIT`, and `KEY` to use a USER variable rather than requiring a whole register
  - [ ] Implement a SAVE and LOAD routine
  - [ ] Save the structures/registers needed by MCSMP20 so that invocation doesn't clobber the Forth stack
 
