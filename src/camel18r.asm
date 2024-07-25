@@ -36,6 +36,56 @@
 ;   address unit is 8 bits (1 byte), i.e.,
 ;       addresses are byte-aligned.
 ; ===============================================
+;Z ef1?		--	c	get EF1 status
+;
+	DW link
+	DB 0
+link SET $
+	DB 4,"ef1?"
+EF1Q
+	b1 etrue
+efalse
+	dec psp
+	ldi $0
+	stxd
+	str psp
+	sep nextpc
+etrue
+	dec psp
+	ldi $FF
+	stxd
+	str psp
+	sep nextpc
+
+;Z ef2?		--	c	get EF2 status
+;
+	DW link
+	DB 0
+link SET $
+	DB 4,"ef2?"
+EF2Q
+	b2 etrue
+	br efalse
+
+;Z ef3?		--	c	get EF3 status
+;
+	DW link
+	DB 0
+link SET $
+	DB 4,"ef3?"
+EF3Q
+	b3 etrue
+	br efalse
+
+;Z ef4?		--	c	get EF4 status
+;
+	DW link
+	DB 0
+link SET $
+	DB 4,"ef4?"
+EF4Q
+	b4 etrue
+	br efalse
 
 ;Z outp		c p	--		Output char c on port p
 ;
@@ -124,57 +174,6 @@ doin
 endin			;Safety cusion if `8 INP` is executed
 	sep nextpc
 
-;Z ef1?		--	c	get EF1 status
-;
-	DW link
-	DB 0
-link SET $
-	DB 4,"ef1?"
-EF1Q
-	b1 etrue
-efalse
-	dec psp
-	ldi $0
-	stxd
-	str psp
-	sep nextpc
-etrue
-	dec psp
-	ldi $FF
-	stxd
-	str psp
-	sep nextpc
-
-;Z ef2?		--	c	get EF2 status
-;
-	DW link
-	DB 0
-link SET $
-	DB 4,"ef2?"
-EF2Q
-	b2 etrue
-	br efalse
-
-;Z ef3?		--	c	get EF3 status
-;
-	DW link
-	DB 0
-link SET $
-	DB 4,"ef3?"
-EF3Q
-	b3 etrue
-	br efalse
-
-;Z ef4?		--	c	get EF4 status
-;
-	DW link
-	DB 0
-link SET $
-	DB 4,"ef4?"
-EF4Q
-	b4 etrue
-	br efalse
-	
 	DW link
 	DB 1
 link SET $

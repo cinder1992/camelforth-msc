@@ -287,7 +287,7 @@ delay1
 	bnz delay1		;3 loop until 0, DF = 1
 	b3 keyzero		;4 test next bit
 	skp				;5 leave DF = 1 if bit is 1
-keyzero	
+keyzero
 	shr				;5 set DF = 0 if bit is 0
 	ldn psp			;6 get byte
 	shrc			;7 shift bit into stack, D7 = DF, DF = D0
@@ -300,7 +300,7 @@ delay2
 	bnz delay2		;delay until the end of the stop bit
 	;dec psp			;point back to the received character
 	sep nextpc
-	
+
 ;C EMIT     c --    output character to console
 	DW link
 	DB 0
@@ -310,21 +310,21 @@ EMIT
 	ldi 0
 	shr		;DF = 0
 emit1
-	bdf emitloop	;9 detect carry	
+	bdf emitloop	;9 detect carry
 	seq			;10 generate 0 bit
 	skp			;11 skip
-emitloop 
+emitloop
 	req			;12 generate 1 bit
 	ghi baudr	;13 get baud constant
 	;smi 0
 emitdelay
-	smi 1		;2 
+	smi 1		;2
 	bnz emitdelay	;3
 	ldx		;4 get bit
 	shrc		;5 D0 = DF, D7 = 1
 	str psp		;6 put bit back
 	xri $FF	;7 check if we have 0xFF
-	bnz emit1   ;8 
+	bnz emit1   ;8
 	bdf emit2	; generate last bit
 	seq
 	skp
@@ -1733,6 +1733,10 @@ skip
 	phi temp3
 	sex temp3	; for comparisons
 
+	glo temp1
+	smi $20
+	bz skblloop
+
 skloop			; is count zero?
 	glo temp2
 	bnz sk1
@@ -1757,6 +1761,20 @@ skdone
 	str psp
 	sep nextpc
 
+skblloop			; is count zero?
+	glo temp2
+	bnz skbl1
+	ghi temp2
+	bz skdone
+skbl1
+	glo temp1	; get char
+	sm
+	bnf skdone	; char > $20
+	inc temp3	; increment address
+	dec temp2	; decrement count
+	br skblloop
+
+
 ;Z scan    c-addr u c -- c-addr' u'
 ;                       find matching char
 	DW link
@@ -1777,6 +1795,10 @@ scan
 	phi temp3
 	sex temp3	; for comparisons
 
+	glo temp1
+	smi $20
+	bz scblloop
+
 scloop			; is count zero?
 	glo temp2
 	bnz sc1
@@ -1789,6 +1811,19 @@ sc1
 	inc temp3	; increment address
 	dec temp2	; decrement count
 	br scloop
+
+scblloop			; is count zero?
+	glo temp2
+	bnz scbl1
+	ghi temp2
+	bz skdone
+scbl1
+	glo temp1	; get char
+	sm
+	bdf skdone	; char <= 20
+	inc temp3	; increment address
+	dec temp2	; decrement count
+	br scblloop
 
 ;Z S=    c-addr1 c-addr2 u -- n   string compare
 ;              n<0: s1<s2, n=0: s1=s2, n>0: s1>s2

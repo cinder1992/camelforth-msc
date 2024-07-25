@@ -44,16 +44,16 @@
 ; ===============================================
 ; Build variables and flags:
 reset	EQU	$0000		; cold start, Forth kernel, dictionary
-MEMBOT EQU $8000		; bottom of memory
+MEMTOP EQU $8000		; Top of memory
 INRAM	EQU 1			; is the main dictionary in RAM?
 ANSI	EQU 0			; ANSI term or VT term?
 
-leavestack	EQU	MEMBOT - $100		; top of leave stack		grows up
-padarea		EQU	MEMBOT - $100		; User Pad Buffer		grows down
+leavestack	EQU	MEMTOP - $100		; top of leave stack		grows up
+padarea		EQU	leavestack			; User Pad Buffer		grows down
 tibend		EQU	padarea - $100		; end+1 of Terminal Buffer
 tibarea		EQU	tibend - $100		; Terminal Input Buffer		grows up
 userarea	EQU	tibarea - $100		; user area, page aligned	grows up
-returnstack	EQU	tibarea - $100		; top of return stack		grows down
+returnstack	EQU	userarea			; top of return stack		grows down
 paramstack	EQU	returnstack - $100	; top of parameter stack	grows down
 
 ; ===============================================
