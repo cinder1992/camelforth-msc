@@ -185,3 +185,31 @@ ansiq
 	ELSE
 	DW 0
 	ENDI
+
+	DW link
+	DB 1
+link SET $
+	DB 5,"[fc?]"
+fcq
+	sep constpc
+	IF FC NE 0
+	DW $FFFF
+	ELSE
+	DW 0
+	ENDI
+	
+	DW link
+	DB 0
+link SET $
+	DB 4,"xoff"
+xoff
+	sep constpc
+	DW $13
+
+	DW link
+	DB 0
+link SET $
+	DB 3,"xon"
+xon
+	sep constpc
+	DW $11

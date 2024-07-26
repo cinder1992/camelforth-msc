@@ -47,6 +47,7 @@ reset	EQU	$0000		; cold start, Forth kernel, dictionary
 MEMTOP EQU $8000		; Top of memory
 INRAM	EQU 1			; is the main dictionary in RAM?
 ANSI	EQU 0			; ANSI term or VT term?
+FC		EQU 0			; XON/XOFF Flow control?
 
 leavestack	EQU	MEMTOP - $100		; top of leave stack		grows up
 padarea		EQU	leavestack			; User Pad Buffer		grows down
@@ -58,6 +59,7 @@ paramstack	EQU	returnstack - $100	; top of parameter stack	grows down
 
 ; ===============================================
 ; Register usage
+; TODO: Interrupt handler, DMA handler, etc.
 codepc	EQU 0	; PC for code words
 ip		EQU 1	; Forth interpreter pointer
 psp		EQU 2	; Forth parameter stack pointer

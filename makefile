@@ -5,4 +5,4 @@ camel.hex:	src/camel.asm src/camel18.asm src/camel18d.asm src/camel18r.asm src/c
 	(cd src && a18 camel.asm -l ../camel.lst -o ../camel.hex)
 
 clean:
-	rm -f *.hex *.lst
+	rm *.hex *.lst

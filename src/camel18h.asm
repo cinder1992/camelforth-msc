@@ -593,6 +593,7 @@ UMAX1  DW DROP,EXIT
 
 ;C ACCEPT  c-addr +n -- +n'	get line from term'l
 ;   OVER + 1- OVER		-- sa ea a
+;	[fc?] [IF] xon EMIT [then]
 ;   BEGIN KEY			-- sa ea a c
 ;   DUP 0D <> WHILE
 ;       DUP				-- sa ea a c
@@ -614,6 +615,9 @@ link SET $
 ACCEPT
 	sep colonpc
 	DW OVER,PLUS,ONEMINUS,OVER
+	IF FC NE 0
+	DW LIT,$11,EMIT
+	ENDI
 ACC1 
 	DW KEY,DUP,LIT,$0D,NOTEQUAL,qbranch,ACC5
 	DW DUP
@@ -1156,7 +1160,8 @@ EVALUATE
 ;   L0 LP !  R0 RP!   0 STATE !
 ;   BEGIN
 ;       TIB DUP TIBSIZE ACCEPT
-;       INTERPRET
+;		[fc?] [IF] xoff EMIT
+;       [THEN] INTERPRET
 ;       STATE @ 0= IF CR ." OK" THEN
 ;   AGAIN ;
 	DW link
@@ -1168,6 +1173,9 @@ QUIT
 	DW L0,LP,STORE
 	DW R0,RPSTORE,ZERO,STATE,STORE
 QUIT1  DW TIB,DUP,TIBSIZE,ACCEPT
+	IF FC NE 0 
+		DW LIT,$13,EMIT
+	ENDI
 	DW INTERPRET, CR
 	DW STATE,FETCH,ZEROEQUAL,qbranch,QUIT2
 	DW XSQUOTE
@@ -1745,4 +1753,8 @@ WARM1
 	DB 23
 	DB "Dictionary Bytes free"
 	DB $0D,$0A
-	DW TYPE,ABORT		; ABORT never returns
+	DW TYPE
+	IF FC NE 0
+		DW LIT,$13,EMIT ;Fool the state machine so we don't retransmit!
+	ENDI
+	DW ABORT		; ABORT never returns

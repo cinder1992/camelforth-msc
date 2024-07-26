@@ -53,13 +53,12 @@ See [here](doc/minicom-example.md) for an example uploading using minicom on lin
 
 ## Known Issues
 
-- `ascii-xfr` transfers from `minicom` do not play well with the reference `ACCEPT` routine, you'll have to key in your programs by hand. sorry.
-- There is **ABSOLUTELY NO BOUNDS CHECKING** on the stacks, it's up to you to not clobber memory!
-- The program has only been tested on a REV. L CPU board with a REV. L Front panel. `SEQ` and `REQ` logic as well as `B3` and `BN3` logic in the `KEY` and `EMIT` routines may be reversed for other revisions!
-- There is no way to reenter the Forth interpreter after exiting with `BYE`, leaving programs potentially clobbered by the monitor
-- The interpreter takes up around 100-200 bytes more than it should, thanks to page-alignment issues.
-- `ACCEPT`, `WORD`, and `FIND` are implemented in high-level Forth, making the interpreter slower than it really should be when compiling words, sometimes taking up to several seconds to compile for larger words.
-- Warm-start doesn't properly detect differing versions, so may leave the `LATEST` pointer pointing to the wrong place
+ - There is **ABSOLUTELY NO BOUNDS CHECKING** on the stacks, it's up to you to not clobber memory!
+ - The program has only been tested on a REV. L CPU board with a REV. L Front panel. `SEQ` and `REQ` logic as well as `B3` and `BN3` logic in the `KEY` and `EMIT` routines may be reversed for other revisions!
+ - There is no way to reenter the Forth interpreter after exiting with `BYE`, leaving programs potentially clobbered by the monitor
+ - The interpreter takes up around 100-200 bytes more than it should, thanks to page-alignment issues.
+ - `ACCEPT`, `WORD`, and `FIND` are implemented in high-level Forth, making the interpreter slower than it really should be when compiling lines, sometimes taking up to several seconds to compile for larger lines.
+ - Warm-start doesn't properly detect differing versions, so may leave the `LATEST` pointer pointing to the wrong place
 
 ## Troubleshooting
 ### No words are recognized after I loaded a new version!
