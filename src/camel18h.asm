@@ -729,14 +729,15 @@ HOLD
 	DW HP,FETCH,CSTORE,EXIT
 
 ;C <#    --			 begin numeric conversion
-;   HERE HP ! ;			(initialize Hold Pointer)
+;   HERE 64 + HP ! ;		(initialize Hold Pointer)
+; 	Space for 64 ASCII characters has been provided
 	DW link
 	DB 0
 link SET $
 	DB 2,"<#"
 LESSNUM
 	sep colonpc
-	DW HERE,HP,STORE,EXIT
+	DW HERE,LIT,$32,PLUS,HP,STORE,EXIT
 
 ;Z >DIGIT   n -- c		convert to 0..9A..Z
 ;   [ HEX ] DUP 9 > 7 AND + 30 + ;
@@ -1542,17 +1543,17 @@ REPEAT
 	DW AGAIN,THEN,EXIT
 
 ;Z >L   x --   L: -- x		move to leave stack
-;   CELL LP +!  LP @ ! ;	(L stack grows up)
+;   CELL NEGATE LP +!  LP @ ! ;	(L stack grows down)
 	DW link
 	DB 0
 link SET $
 	DB 2,">L"
 TOL
 	sep colonpc
-	DW CELL,LP,PLUSSTORE,LP,FETCH,STORE,EXIT
+	DW CELL,NEGATE,LP,PLUSSTORE,LP,FETCH,STORE,EXIT
 
 ;Z L>   -- x   L: x --		move from leave stack
-;   LP @ @  CELL NEGATE LP +! ;
+;   LP @ @  CELL LP +! ;
 	DW link
 	DB 0
 link SET $
@@ -1560,7 +1561,7 @@ link SET $
 LFROM
 	sep colonpc
 	DW LP,FETCH,FETCH
-	DW CELL,NEGATE,LP,PLUSSTORE,EXIT
+	DW CELL,LP,PLUSSTORE,EXIT
 
 ;C DO       -- adrs   L: -- 0
 ;    0 	( no fwd branch )

@@ -49,9 +49,9 @@ INRAM	EQU 1			; is the main dictionary in RAM?
 VT		EQU 1			; ANSI term or VT term?
 FC		EQU 0			; XON/XOFF Flow control?
 
-leavestack	EQU	MEMTOP - $100		; top of leave stack		grows up
-padarea		EQU	leavestack			; User Pad Buffer		grows down
-tibend		EQU	padarea - $100		; end+1 of Terminal Buffer
+padarea		EQU	MEMTOP - $100		; User Pad Buffer			grows up
+leavestack	EQU	padarea				; top of leave stack		grows down
+tibend		EQU	leavestack - $100	; end+1 of Terminal Buffer
 tibarea		EQU	tibend - $100		; Terminal Input Buffer		grows up
 userarea	EQU	tibarea - $100		; user area, page aligned	grows up
 returnstack	EQU	userarea			; top of return stack		grows down
