@@ -939,7 +939,7 @@ FWORD
 FWORD1  DW RFROM,RFROM,ROT,MINUS,TOIN,PLUSSTORE
 	DW TUCK,MINUS
 	DW HERE,TOCOUNTED,HERE
-        DW BL,OVER,COUNT,PLUS,CSTORE
+    DW BL,OVER,COUNT,PLUS,CSTORE
 	DW EXIT
 
 ;Z NFA>LFA   nfa -- lfa		name adr -> link field
@@ -977,7 +977,7 @@ link SET $
 IMMEDQ
 	sep colonpc
 	DW ONEMINUS,CFETCH,EXIT
-
+	PAGE
 ;C FIND   c-addr -- c-addr 0	if not found
 ; 		  xt  1		if immediate
 ; 		  xt -1		if "normal"
@@ -998,17 +998,94 @@ IMMEDQ
 	DB 0
 link SET $
 	DB 4,"FIND"
+;FIND
+;	sep colonpc
+;	DW LATEST,FETCH
+;FIND1  DW TWODUP,OVER,CFETCH,CHARPLUS
+;	DW SEQUAL,DUP,qbranch,FIND2
+;	DW DROP,NFATOLFA,FETCH,DUP
+;FIND2  DW ZEROEQUAL,qbranch,FIND1
+;	DW DUP,qbranch,FIND3
+;	DW NIP,DUP,NFATOCFA
+;	DW SWAP,IMMEDQ,ZEROEQUAL,ONE,ORR
+;FIND3  DW EXIT
+
 FIND
-	sep colonpc
-	DW LATEST,FETCH
-FIND1  DW TWODUP,OVER,CFETCH,CHARPLUS
-	DW SEQUAL,DUP,qbranch,FIND2
-	DW DROP,NFATOLFA,FETCH,DUP
-FIND2  DW ZEROEQUAL,qbranch,FIND1
-	DW DUP,qbranch,FIND3
-	DW NIP,DUP,NFATOCFA
-	DW SWAP,IMMEDQ,ZEROEQUAL,ONE,ORR
-FIND3  DW EXIT
+	LOAD temp1, userarea + 14 ; load the address of LATEST
+	lda temp1
+	phi temp2
+	ldn temp1
+	plo temp2	; temp2 now contains LATEST
+FINDBegin
+	lda psp
+	plo temp1
+	ldn psp
+	phi temp1
+	dec psp
+	ldn temp1
+	plo temp3
+	ldi 0
+	phi temp3	;temp3 contains count
+	inc temp3
+	glo temp2
+	smi 3
+	plo temp4
+	ghi temp2
+	smbi 0
+	phi temp4	; temp4 now points to the LINK field of our word
+	sex temp2
+FINDLoop
+	ghi temp3	; is count zero?
+	bnz FIND1
+	glo temp3
+	bz FINDEnd
+FIND1
+	lda temp1
+	sm
+	bnz FINDNext
+	inc temp2
+	dec temp3
+	br FINDLoop
+FINDNext
+	lda temp4
+	phi temp2
+	bz FINDUhOh
+	ldn temp4
+	plo temp2
+	br FINDBegin
+FINDUhOh
+	ldn temp4
+	plo temp2
+	bnz FINDBegin
+FINDNotFound
+	; D already contains zero
+	sex psp
+	dec psp
+	stxd
+	str psp
+	sep nextpc
+FINDEnd	;Found our word, and as a consequence temp2 contains XT
+	sex psp
+	inc psp
+	ghi temp2
+	stxd
+	glo temp2
+	stxd
+; Temp 4 contains the LINK, so incrementing it by 2 should point to IMMD
+	inc temp4
+	inc temp4
+	ldn temp4
+	bnz FINDImmd
+	ldi $FF
+	stxd
+	str psp
+	sep nextpc
+FINDImmd
+	ldi $00
+	stxd
+	ldi $01
+	str psp
+	sep nextpc
 
 ;C LITERAL  x --		append numeric literal
 ;   STATE @ IF COMPILE LIT , THEN ; IMMEDIATE
