@@ -737,7 +737,7 @@ link SET $
 	DB 2,"<#"
 LESSNUM
 	sep colonpc
-	DW HERE,LIT,$32,PLUS,HP,STORE,EXIT
+	DW HERE,LIT,$40,PLUS,HP,STORE,EXIT
 
 ;Z >DIGIT   n -- c		convert to 0..9A..Z
 ;   [ HEX ] DUP 9 > 7 AND + 30 + ;
@@ -773,14 +773,14 @@ NUMS1  DW NUM,TWODUP,ORR,ZEROEQUAL,qbranch,NUMS1
 	DW EXIT
 
 ;C #>    ud1 -- c-addr u	end conv., get string
-;   2DROP HP @ HERE OVER - ;
+;   2DROP HP @ HERE 64 + OVER - ;
 	DW link
 	DB 0
 link SET $
 	DB 2,"#>"
 NUMGREATER
 	sep colonpc
-	DW TWODROP,HP,FETCH,HERE,OVER,MINUS,EXIT
+	DW TWODROP,HP,FETCH,HERE,LIT,$40,PLUS,OVER,MINUS,EXIT
 
 ;C SIGN  n --			add minus sign if n<0
 ;   0< IF 2D HOLD THEN ;
@@ -1737,7 +1737,7 @@ COLD1
 	DW UINIT,U0,NINIT,CMOVE,WARM
 ;Z WARM		--		warm start Forth system
 ;   ." RCA1802 CamelForth etc."
-;	S0 SP! R0 RP! \ Clear the param stack and return stack
+;	S0 SP! \ Clear the param stack
 ;   UNUSED U. ." Dictionary Bytes free" ABORT ;
 	DW link
 	DB 0
@@ -1751,7 +1751,7 @@ WARM1
 	DB "RCA1802 CamelForth v1.1 - MC Edition v0.3  09 Aug 2024"
 	DB $0D,$0A
 	DW TYPE
-	DW S0,SPSTORE,R0,RPSTORE
+	DW S0,SPSTORE
 	DW UNUSED,UDOT,XSQUOTE
 	DB 23
 	DB "Dictionary Bytes free"
