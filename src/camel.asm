@@ -46,7 +46,7 @@
 reset	EQU	$0000		; cold start, Forth kernel, dictionary
 MEMTOP EQU $8000		; Top of memory
 INRAM	EQU 1			; is the main dictionary in RAM?
-ANSI	EQU 0			; ANSI term or VT term?
+VT		EQU 1			; ANSI term or VT term?
 FC		EQU 0			; XON/XOFF Flow control?
 
 leavestack	EQU	MEMTOP - $100		; top of leave stack		grows up

@@ -621,7 +621,7 @@ ACCEPT
 ACC1 
 	DW KEY,DUP,LIT,$0D,NOTEQUAL,qbranch,ACC5
 	DW DUP
-	IF ANSI NE 0
+	IF VT NE 1
 		DW LIT,8,EQUAL,qbranch,ACC3
 	ELSE 
 		DW LIT,127,EQUAL,qbranch,ACC3
@@ -729,14 +729,14 @@ HOLD
 	DW HP,FETCH,CSTORE,EXIT
 
 ;C <#    --			 begin numeric conversion
-;   PAD HP ! ;			(initialize Hold Pointer)
+;   HERE HP ! ;			(initialize Hold Pointer)
 	DW link
 	DB 0
 link SET $
 	DB 2,"<#"
 LESSNUM
 	sep colonpc
-	DW PAD,HP,STORE,EXIT
+	DW HERE,HP,STORE,EXIT
 
 ;Z >DIGIT   n -- c		convert to 0..9A..Z
 ;   [ HEX ] DUP 9 > 7 AND + 30 + ;
@@ -772,14 +772,14 @@ NUMS1  DW NUM,TWODUP,ORR,ZEROEQUAL,qbranch,NUMS1
 	DW EXIT
 
 ;C #>    ud1 -- c-addr u	end conv., get string
-;   2DROP HP @ PAD OVER - ;
+;   2DROP HP @ HERE OVER - ;
 	DW link
 	DB 0
 link SET $
 	DB 2,"#>"
 NUMGREATER
 	sep colonpc
-	DW TWODROP,HP,FETCH,PAD,OVER,MINUS,EXIT
+	DW TWODROP,HP,FETCH,HERE,OVER,MINUS,EXIT
 
 ;C SIGN  n --			add minus sign if n<0
 ;   0< IF 2D HOLD THEN ;
@@ -1736,7 +1736,8 @@ COLD1
 	DW UINIT,U0,NINIT,CMOVE,WARM
 ;Z WARM		--		warm start Forth system
 ;   ." RCA1802 CamelForth etc."
-;   FREE . ." Dictionary Bytes free" ABORT ;
+;	S0 SP! R0 RP! \ Clear the param stack and return stack
+;   UNUSED U. ." Dictionary Bytes free" ABORT ;
 	DW link
 	DB 0
 link SET $
@@ -1746,9 +1747,10 @@ WARM
 WARM1
 	DW XSQUOTE
 	DB 56			; length of sign-on string
-	DB "RCA1802 CamelForth v1.1 - MC Edition v0.2  22 Jul 2024"
+	DB "RCA1802 CamelForth v1.1 - MC Edition v0.3  09 Aug 2024"
 	DB $0D,$0A
 	DW TYPE
+	DW S0,SPSTORE,R0,RPSTORE
 	DW UNUSED,UDOT,XSQUOTE
 	DB 23
 	DB "Dictionary Bytes free"

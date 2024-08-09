@@ -723,6 +723,26 @@ link SET $
 BRACTHEN
 	sep nextpc
 
+;T [DEFINED]  ( "<spaces>name..." -- f )  ;  IMMEDIATE
+;	BL WORD FIND NIP 0<> ; IMMEDIATE
+	DW link
+	DB 1
+link SET $
+	DB 9,"[DEFINED]"
+BRACDEFINED
+	sep colonpc
+	DW BL,FWORD,FIND,NIP,ZERONOTEQ,EXIT
+
+;T [UNDEFINED]  ( "<spaces>name..." -- f )  ;  IMMEDIATE
+;	BL WORD FIND NIP 0= ; IMMEDIATE
+	DW link
+	DB 1
+link SET $
+	DB 11,"[UNDEFINED]"
+BRACUNDEFINED
+	sep colonpc
+	DW BL,FWORD,FIND,NIP,ZEROEQUAL,EXIT
+
 ;X SAVE-INPUT	( -- save-spec n )
 ; >IN @ 1	( for keyboard and EVALUATE )
 	DW link

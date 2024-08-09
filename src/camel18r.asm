@@ -177,10 +177,10 @@ endin			;Safety cusion if `8 INP` is executed
 	DW link
 	DB 1
 link SET $
-	DB 7,"[ansi?]"
+	DB 5,"[vt?]"
 ansiq
 	sep constpc
-	IF ANSI NE 0
+	IF VT NE 0
 	DW $FFFF
 	ELSE
 	DW 0
